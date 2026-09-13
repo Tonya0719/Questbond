@@ -1,0 +1,13 @@
+case_id,request_id,scenario_type,starting_state,ground_truth_module,pass_criteria,demo_priority
+CASE-01,R001,exact_skill_match,seed,assignment,exact_match,high
+CASE-02,R002,skill_mismatch_filtering,seed,assignment,exact_match,medium
+CASE-03,R003,certification_mismatch,seed,assignment,exact_match,high
+CASE-04,R004,existing_schedule_conflict,seed,assignment,exact_match,high
+CASE-05,R005,multiple_eligible_technicians,seed,assignment,exact_match,medium
+CASE-06,R006,same_workload_deterministic_tie_break,seed,assignment,exact_match,high
+CASE-07,R007,shift_validation,seed,assignment,exact_match,medium
+CASE-08,R008,technician_unavailable,seed,assignment,exact_match,medium
+CASE-09,R009,missing_service_information,seed,request,exact_match,high
+CASE-10,R010,missing_appointment_window,seed,request,exact_match,high
+CASE-11,E-WORKLOAD,workload_capacity_exceeded,workload_override,assignment,exact_match,medium
+CASE-12,E-NOFEAS,no_feasible_technician,late_window,assignment,exact_match,high

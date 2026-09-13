@@ -1,0 +1,11 @@
+request_id,expected_category,expected_subtype,expected_location,expected_urgency,expected_time_window,missing_fields,expected_clarification,ready_for_scheduling
+R001,Air-conditioning,Water leakage / repair,East,NORMAL,2025-01-15T10:00|2025-01-15T13:00,,none,true
+R002,Air-conditioning,Routine servicing,West,NORMAL,2025-01-15T10:00|2025-01-15T13:00,,none,true
+R003,Electrical,Power trip diagnosis,Central,NORMAL,2025-01-15T08:00|2025-01-15T12:00,,none,true
+R004,Plumbing,Drain / toilet blockage,North,NORMAL,2025-01-15T10:00|2025-01-15T15:00,,none,true
+R005,Plumbing,Pipe / tap leakage,South,NORMAL,2025-01-15T14:00|2025-01-15T18:00,,none,true
+R006,Electrical,Light / switch / socket repair,East,NORMAL,2025-01-15T10:00|2025-01-15T14:00,,none,true
+R007,Electrical,Minor installation / replacement,West,NORMAL,2025-01-15T13:00|2025-01-15T18:00,,none,true
+R008,Air-conditioning,Not cooling / diagnosis,Central,NORMAL,2025-01-16T11:00|2025-01-16T16:00,,none,true
+R009,,,North,NORMAL,2025-01-15T09:00|2025-01-15T12:00,service_rule_id|estimated_duration_min,ask service type,false
+R010,Plumbing,Drain / toilet blockage,South,NORMAL,,window_start|window_end,ask appointment window,false

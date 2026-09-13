@@ -1,0 +1,6 @@
+streamlit
+pandas
+pydantic>=2
+python-dotenv
+boto3
+pytest

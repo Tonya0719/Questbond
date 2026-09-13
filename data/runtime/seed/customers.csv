@@ -1,0 +1,13 @@
+customer_id,name_alias,customer_type,contact_channel,postal_sector,zone,preferred_time
+C001,Customer 1,RESIDENTIAL,WEB,52,East,09:00-12:00
+C002,Customer 2,RESIDENTIAL,PHONE,64,West,13:00-17:00
+C003,Customer 3,SME,EMAIL,18,Central,09:00-12:00
+C004,Customer 4,RESIDENTIAL,WEB,75,North,13:00-17:00
+C005,Customer 5,SME,PHONE,15,South,09:00-12:00
+C006,Customer 6,RESIDENTIAL,WEB,46,East,13:00-17:00
+C007,Customer 7,RESIDENTIAL,EMAIL,60,West,09:00-12:00
+C008,Customer 8,SME,WEB,23,Central,13:00-17:00
+C009,Customer 9,RESIDENTIAL,PHONE,73,North,09:00-12:00
+C010,Customer 10,RESIDENTIAL,WEB,09,South,13:00-17:00
+C011,Customer 11,SME,EMAIL,54,East,09:00-12:00
+C012,Customer 12,RESIDENTIAL,WEB,68,West,13:00-17:00
