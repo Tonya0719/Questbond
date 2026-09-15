@@ -21,7 +21,9 @@ streamlit run app.py
 
 The default `LLM_BACKEND=mock` requires no model server or AWS credentials.
 
-To exercise real tool calling against a local OpenAI-compatible server (for example LM Studio, Ollama's OpenAI-compatible endpoint, or vLLM), configure:
+To exercise real tool calling through the OpenAI-compatible development path, set `LLM_BACKEND=local`. This route can point either to a model server running on this computer (for example LM Studio, Ollama's OpenAI-compatible endpoint, or vLLM) or to a remote OpenAI-compatible API such as OpenRouter.
+
+For a model server running on this computer:
 
 ```env
 LLM_BACKEND=local
@@ -31,6 +33,24 @@ LOCAL_LLM_MODEL=your-tool-capable-model
 LOCAL_LLM_TIMEOUT_SEC=60
 ```
 
-The selected local model must support function/tool calling. The application sends requests to `POST /v1/chat/completions`; no OpenAI cloud account is required. Start the local server before running `streamlit run app.py`.
+For OpenRouter-based local development/debugging:
+
+```env
+LLM_BACKEND=local
+LOCAL_LLM_BASE_URL=https://openrouter.ai/api/v1
+LOCAL_LLM_API_KEY=sk-or-v1-your-key-here
+LOCAL_LLM_MODEL=your-openrouter-model-id
+LOCAL_LLM_TIMEOUT_SEC=60
+```
+
+The selected model must support function/tool calling. The shared `LocalOpenAICompatibleClient` sends requests to `POST {LOCAL_LLM_BASE_URL}/chat/completions`, so the agent/orchestration/scheduling code does not change when switching between a local model server and OpenRouter.
+
+OpenRouter credit/key metadata can be checked manually during development with:
+
+```bash
+python scripts/check_llm_credit.py
+```
+
+The credit check is developer-only: it is not called automatically by the Agent and does not modify SQLite runtime state.
 
 To use Amazon Bedrock instead, set `LLM_BACKEND=bedrock`, `AWS_REGION`, and `BEDROCK_MODEL_ID`.

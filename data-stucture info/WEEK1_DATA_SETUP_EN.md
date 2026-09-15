@@ -1,0 +1,928 @@
+# Week 1 — Data & Setup Guide
+
+## 1. Purpose
+
+Week 1 only needs to make the following end-to-end flow work reliably:
+
+```text
+Customer natural-language request
+→ Information extraction
+→ Clarification for missing information
+→ Structured service request
+→ Technician filtering
+→ Basic assignment recommendation
+```
+
+The company is assumed to already have stable operations, so the system starts with existing customers, technicians, jobs, and schedules. New requests may come from either existing customers or new customers.
+
+Week 1 does **not** cover disruption-based rescheduling, real-time traffic, weather, material shortages, automatic notifications, or multi-week planning.
+
+---
+
+## 2. Service Scope
+
+Week 1 uses three service categories, with three subtypes in each category, for a total of nine service rules.
+
+| Service Category | Subtype 1 | Subtype 2 | Subtype 3 |
+|---|---|---|---|
+| Air-conditioning | Routine servicing | Not cooling / diagnosis | Water leakage / repair |
+| Plumbing | Pipe/tap leakage | Drain/toilet blockage | Fixture replacement |
+| Electrical | Light/switch/socket repair | Power trip diagnosis | Minor installation/replacement |
+
+Each service rule defines:
+
+- required skills
+- required certifications
+- default service duration
+- default priority
+- required customer information
+
+`service_rule_id` is the canonical identifier for service type.
+
+The LLM may identify or propose the service rule, but skills, certifications, duration, category, and subtype should come from the canonical service-rule record rather than being invented independently by the model.
+
+---
+
+## 3. Week 1 Data Scale
+
+| Data | Quantity | Design Purpose |
+|---|---:|---|
+| Company | 1 | Fictional Singapore integrated-repair SME |
+| Service categories | 3 | Air-conditioning, Plumbing, Electrical |
+| Service rules | 9 | Three subtypes per category |
+| Technicians | 8 | Different skills, certifications, shifts, availability, and workload capacity |
+| Existing customers | 12 | Fully synthetic identities and contact details |
+| Existing jobs | 16 | Represent current-day business workload and affect availability |
+| Existing schedule records | 16 | Existing scheduled work used for conflict and workload checks |
+| New request cases | 10 | 6 normal, 2 constrained, 2 incomplete-information cases |
+| Structured requests | About 10 seed/runtime records | Output of intake/extraction and formal scheduling input |
+| Assignment results | Generated as the workflow runs | Actual deterministic assignment recommendations |
+| Request ground truth | 10 | Expected extraction / clarification results for evaluation |
+| Assignment ground truth | 10 | Expected eligibility, exclusions, recommendation, and rationale |
+| Stable demo cases | 3 | Normal assignment, constrained assignment, clarification case |
+
+Suggested distribution of the 16 existing jobs:
+
+```text
+Air-conditioning: 7
+Plumbing:        5
+Electrical:      4
+```
+
+---
+
+## 4. Important Implementation Note: Logical Data vs Current Storage
+
+The original Week 1 data design described logical outputs such as:
+
+```text
+requests_structured.csv
+assignment_results.csv
+```
+
+In the **current implementation**, these are not generated as physical runtime CSV files. They are stored as SQLite tables:
+
+```text
+SQLite table: structured_requests
+SQLite table: assignment_results
+```
+
+The runtime database is:
+
+```text
+data/runtime/technician_scheduling.db
+```
+
+Therefore, the current implementation should be understood as:
+
+```text
+Seed CSV / JSON
+→ SQLite Runtime Database
+→ Agent / Tools / Scheduling Engine
+→ Runtime SQLite Tables
+```
+
+rather than:
+
+```text
+Input CSV
+→ Output CSV
+```
+
+This distinction is important when checking whether the workflow has generated results.
+
+---
+
+## 5. Current Data Layout
+
+### 5.1 Runtime Seed Data
+
+```text
+data/runtime/seed/
+├── company_profile.json
+├── service_rules.csv
+├── technicians.csv
+├── customers.csv
+├── jobs_current.csv
+├── schedule_current.csv
+└── customer_requests.csv
+```
+
+These files define the reproducible starting state of the synthetic business environment.
+
+### 5.2 Runtime Database
+
+```text
+data/runtime/technician_scheduling.db
+```
+
+Important runtime tables include:
+
+```text
+company_profile
+service_rules
+technicians
+customers
+jobs
+schedules
+customer_requests
+structured_requests
+assignment_results
+agent_sessions
+agent_messages
+agent_handoffs
+agent_tool_calls
+```
+
+### 5.3 Evaluation Data
+
+```text
+data/evaluation/
+├── cases.csv
+├── request_ground_truth.csv
+└── assignment_ground_truth.csv
+```
+
+The evaluation files must remain independent from runtime logic.
+
+---
+
+## 6. Data Layers and Runtime Boundary
+
+### Operational Inputs — Runtime May Read
+
+```text
+company_profile.json
+service_rules.csv
+technicians.csv
+customers.csv
+jobs_current.csv
+schedule_current.csv
+customer_requests.csv
+```
+
+### Runtime / Derived Data — Generated by the System
+
+```text
+SQLite: structured_requests
+SQLite: assignment_results
+SQLite: agent_sessions
+SQLite: agent_handoffs
+SQLite: agent_tool_calls
+```
+
+### Evaluation Data — Runtime Must Not Read
+
+```text
+cases.csv
+request_ground_truth.csv
+assignment_ground_truth.csv
+```
+
+The long-term rule is:
+
+> **Unify the test-case registry, but keep ground truth modular.**
+
+`cases.csv` is the common registry for test cases. Module-specific expected outputs stay in separate files.
+
+Future Week 2 evaluation can add files such as:
+
+```text
+rescheduling_ground_truth.csv
+approval_ground_truth.csv
+```
+
+rather than merging every expected output into one large ground-truth table.
+
+---
+
+## 7. File-by-File Purpose
+
+| File | Quantity | Purpose |
+|---|---:|---|
+| `company_profile.json` | 1 | Company operating hours, supported service scope, and dispatch policy |
+| `service_rules.csv` | 9 | Canonical service definitions and scheduling requirements |
+| `technicians.csv` | 8 | Technician skills, certifications, shifts, status, zone, and workload capacity |
+| `customers.csv` | 12 | Existing synthetic customer context |
+| `jobs_current.csv` | 16 | Existing jobs contributing to current workload |
+| `schedule_current.csv` | 16 | Existing scheduled assignments used for conflict checks |
+| `customer_requests.csv` | 10 | Immutable synthetic raw customer messages |
+| `SQLite: structured_requests` | Around 10 seed/runtime rows | Structured intake output and formal input to scheduling |
+| `SQLite: assignment_results` | Generated at runtime | Actual assignment output including technician, time, status, and reason |
+| `request_ground_truth.csv` | 10 | Expected request extraction / clarification outcome |
+| `assignment_ground_truth.csv` | 10 | Expected deterministic assignment outcome and exclusions |
+| `cases.csv` | 10 | Unified test-case registry linking input, scenario, initial state, and pass criteria |
+
+---
+
+## 8. Main Data Dictionary
+
+## 8.1 `company_profile.json`
+
+| Field | Purpose | Requirement |
+|---|---|---|
+| `company_id` | Unique company identifier | Required and unique; one company in Week 1 |
+| `business_type` | Descriptive business type | Optional; UI/context only |
+| `operating_hours` | Company service hours | Recommended appointments must fall within these hours |
+| `service_categories` | Supported service categories | Must match actual categories in `service_rules` |
+| `dispatch_policy` | Assignment policy | Must match implemented deterministic rules |
+
+---
+
+## 8.2 `service_rules.csv`
+
+| Field | Purpose | Requirement |
+|---|---|---|
+| `service_rule_id` | Canonical service key | Required and unique |
+| `category` | Service category | Air-conditioning / Plumbing / Electrical |
+| `subtype` | Specific service type | One subtype per rule |
+| `required_skills` | Technician hard constraint | Controlled vocabulary; schema may support multiple values |
+| `required_certifications` | Certification hard constraint | Empty / `NONE` if not required; keep format consistent |
+| `default_duration_min` | Default job duration | Positive integer |
+| `default_priority` | Default priority | Controlled enum such as LOW / NORMAL / HIGH |
+| `required_customer_information` | Request-readiness requirement | Defines fields needed before scheduling |
+
+`service_rule_id` is canonical. `category` and `subtype` in a structured request should be derived from the matched service rule rather than independently maintained.
+
+---
+
+## 8.3 `technicians.csv`
+
+| Field | Purpose | Requirement |
+|---|---|---|
+| `technician_id` | Unique technician identifier | Required and unique |
+| `name_alias` | UI/demo name | Synthetic only |
+| `skills` | Skill eligibility | Same vocabulary as `required_skills` |
+| `certifications` | Certification eligibility | Same vocabulary as service rules |
+| `shift_start` | Shift start | Earlier than `shift_end` |
+| `shift_end` | Shift end | New job must fit fully within shift |
+| `status` | Current availability | Controlled value such as AVAILABLE / UNAVAILABLE |
+| `current_zone` | Current operating zone | Optional in Week 1; useful for later travel/rescheduling |
+| `max_workload_min` | Maximum schedulable daily workload | Positive integer; used for capacity checks |
+
+### Workload Design
+
+`assigned_workload_min` should **not** be stored as the source of truth in technician master data.
+
+Current workload should be calculated dynamically from active jobs and schedules:
+
+```text
+current_workload_min
+= SUM(duration of active assigned jobs for the technician)
+```
+
+Projected workload:
+
+```text
+projected_workload_min
+= current_workload_min + new_job_duration
+```
+
+Projected workload ratio:
+
+```text
+projected_workload_ratio
+= projected_workload_min / max_workload_min
+```
+
+`max_workload_min` is intentionally different from full shift length. A 09:00–18:00 shift may still have a smaller schedulable workload capacity because of lunch, admin time, travel buffer, preparation, and uncertainty.
+
+---
+
+## 8.4 `customers.csv`
+
+| Field | Purpose | Requirement |
+|---|---|---|
+| `customer_id` | Existing-customer identifier | Required and unique |
+| `name_alias` | UI/demo display name | Synthetic |
+| `customer_type` | Customer segment/type | Optional |
+| `contact_channel` | Default communication channel | Optional |
+| `postal_sector` | More granular location reference | Optional; keep consistent with zone |
+| `zone` | Existing customer's default service area | Context only if current request does not override it |
+| `preferred_time` | Historical/default time preference | Must not override explicit current-request window |
+
+A new customer may not exist in this table. Therefore, the structured request itself must carry the scheduling-critical location and appointment window.
+
+---
+
+## 8.5 `jobs_current.csv`
+
+| Field | Purpose |
+|---|---|
+| `job_id` | Unique existing-job identifier |
+| `customer_id` | Existing customer reference |
+| `service_rule_id` | Canonical service-rule reference |
+| `priority` | Existing job priority |
+| `estimated_duration_min` | Occupied time and workload contribution |
+| `window_start` | Customer service-window start |
+| `window_end` | Customer service-window end |
+| `zone` | Job location zone |
+| `status` | Current job state |
+
+Existing jobs are not decorative data. They must be designed to affect technician workload and feasibility for new requests.
+
+---
+
+## 8.6 `schedule_current.csv`
+
+| Field | Purpose |
+|---|---|
+| `job_id` | Links to an existing job |
+| `technician_id` | Assigned technician |
+| `scheduled_start` | Current scheduled start |
+| `scheduled_end` | Current scheduled end |
+| `assignment_status` | Current schedule/assignment state |
+| `customer_confirmed` | Whether the appointment is confirmed |
+
+Week 1 data should satisfy:
+
+- no double booking
+- start < end
+- assignment within technician shift
+- duration consistent with the job record
+- technician possesses the required skill/certification
+
+---
+
+## 8.7 `customer_requests.csv`
+
+| Field | Purpose |
+|---|---|
+| `request_id` | Unique incoming-request identifier |
+| `customer_id_or_new` | Existing customer reference or marker for a new customer |
+| `received_at` | Request arrival time |
+| `channel` | Request channel |
+| `raw_message` | Immutable natural-language customer input |
+| `language` | Language of the request |
+
+`case_type` should not be stored in runtime request input. Scenario labels belong in evaluation metadata such as `cases.csv.scenario_type`.
+
+---
+
+## 8.8 `SQLite: structured_requests`
+
+Main fields:
+
+```text
+request_id
+customer_id
+service_rule_id
+category
+subtype
+zone
+urgency
+window_start
+window_end
+estimated_duration_min
+missing_fields
+ready_for_scheduling
+```
+
+Rules:
+
+- `service_rule_id` is the canonical service key.
+- `category` and `subtype` are derived from the Service Rule.
+- `estimated_duration_min` should come from the Service Rule unless there is an explicit controlled override policy.
+- `zone`, `window_start`, and `window_end` belong to the current request, not only to the customer master record.
+- Missing scheduling-critical information means `ready_for_scheduling = false`.
+
+### Readiness Gate
+
+The scheduling engine should require, at minimum:
+
+```text
+service_rule_id
+zone
+window_start
+window_end
+estimated_duration_min
+ready_for_scheduling = true
+```
+
+`category` and `subtype` do not need to be independent readiness conditions because they are derived from `service_rule_id`.
+
+---
+
+## 8.9 `SQLite: assignment_results`
+
+Main fields:
+
+```text
+assignment_id
+request_id
+technician_id
+scheduled_start
+scheduled_end
+decision_status
+workload_before
+workload_after
+recommendation_reason
+created_at
+```
+
+Allowed decision statuses:
+
+```text
+ASSIGNED
+NEEDS_CLARIFICATION
+NO_FEASIBLE_TECHNICIAN
+```
+
+Important boundary:
+
+> An assignment recommendation is persisted, but it does not automatically overwrite the current schedule.
+
+---
+
+## 8.10 `cases.csv`
+
+`cases.csv` is the unified test-case registry.
+
+Recommended fields:
+
+```text
+case_id
+request_id
+scenario_type
+starting_state
+ground_truth_module
+pass_criteria
+demo_priority
+```
+
+Examples of `scenario_type`:
+
+```text
+NORMAL
+CONSTRAINED
+INCOMPLETE
+```
+
+Future Week 2 values may include:
+
+```text
+RESCHEDULING
+APPROVAL
+```
+
+The registry identifies the case, but expected outputs remain in module-specific ground-truth files.
+
+---
+
+## 9. Week 1 Assignment Rules
+
+### 9.1 Readiness Gate
+
+If scheduling-critical information is missing, do not assign a technician.
+
+Instead:
+
+```text
+ready_for_scheduling = false
+→ clarification
+```
+
+### 9.2 Service Rule Lookup
+
+The Service Rule determines:
+
+- required skills
+- required certifications
+- default duration
+- priority
+- required customer information
+
+The LLM does not decide these values ad hoc.
+
+### 9.3 Hard Constraints
+
+A technician is eligible only when all required conditions are satisfied:
+
+- Required skills match
+- Required certifications match
+- Technician status is AVAILABLE
+- New job is within company operating hours
+- New job is within technician shift
+- New job does not overlap an existing active assignment
+- Full job duration fits the customer window
+- Projected workload does not exceed `max_workload_min`
+
+Schedule-overlap rule:
+
+```text
+new_start < existing_end
+AND
+new_end > existing_start
+```
+
+Capacity rule:
+
+```text
+current_workload_min + new_job_duration
+<= max_workload_min
+```
+
+### 9.4 Feasible Slot Search
+
+Week 1 can use 30-minute increments.
+
+Search only within:
+
+- customer appointment window
+- company operating hours
+- technician shift
+
+and reject slots that conflict with existing schedules.
+
+### 9.5 Deterministic Ranking
+
+Do not use arbitrary weighted scores such as 50/30/20.
+
+Use deterministic lexicographic ranking:
+
+1. Lowest projected workload ratio
+2. Earliest feasible start within the customer window
+3. Lowest technician ID as the final tie-break
+
+This ensures reproducibility and straightforward evaluation.
+
+---
+
+## 10. Synthetic / Mock Data Design
+
+The Week 1 business data is intentionally synthetic.
+
+Synthetic data should not only look realistic; it must deliberately exercise algorithm branches.
+
+Recommended scenarios include:
+
+- exact skill match
+- skill mismatch
+- certification mismatch
+- unavailable technician
+- schedule conflict
+- job outside technician shift
+- workload-capacity exceeded
+- multiple eligible technicians
+- workload ranking determines the winner
+- equal workload → deterministic technician-ID tie-break
+- missing service type
+- missing appointment time
+- no feasible technician
+
+This allows the same seed dataset to support development, debugging, evaluation, and repeatable demos.
+
+---
+
+## 11. How to Operate the Mock / Synthetic Data
+
+### 11.1 Edit the Seed Files, Not the Runtime Database
+
+When changing a business scenario, edit files under:
+
+```text
+data/runtime/seed/
+```
+
+For example, to create a case where the only qualified air-conditioning technician is already occupied, update the relevant:
+
+```text
+technicians.csv
+jobs_current.csv
+schedule_current.csv
+customer_requests.csv
+```
+
+Do **not** manually edit the SQLite database as the normal development workflow.
+
+Reason:
+
+```text
+Seed files = reproducible source of initial state
+SQLite DB = generated runtime state
+```
+
+### 11.2 Rebuild the Runtime Database
+
+After editing seed data:
+
+```bash
+python scripts/reset_db.py
+```
+
+This recreates:
+
+```text
+data/runtime/technician_scheduling.db
+```
+
+from the current seed files.
+
+### 11.3 Validate the Seed State
+
+Run:
+
+```bash
+python scripts/validate_seed_data.py
+```
+
+Validation should detect problems such as:
+
+- invalid IDs
+- missing service rules
+- schedule start >= end
+- overlapping assignments
+- schedule outside technician shift
+- duration mismatches
+- invalid skill/certification assignment
+- workload above `max_workload_min`
+- inconsistent structured-request category/subtype
+
+### 11.4 Run Tests
+
+```bash
+pytest
+```
+
+### 11.5 Run Evaluation
+
+```bash
+python evaluation/run_eval.py
+```
+
+### 11.6 Start the Application
+
+```bash
+streamlit run app.py
+```
+
+Recommended development loop:
+
+```text
+Edit seed CSV / JSON
+→ reset_db.py
+→ validate_seed_data.py
+→ pytest
+→ run_eval.py
+→ streamlit run app.py
+```
+
+---
+
+## 12. Mock LLM vs Synthetic Business Data
+
+These are two different concepts.
+
+### Synthetic Business Data
+
+Defines the fictional operating environment:
+
+```text
+company
+service rules
+technicians
+customers
+existing jobs
+existing schedules
+customer requests
+```
+
+### Mock LLM Backend
+
+`LLM_BACKEND=mock` means the system does not call a real model during Agent development/testing.
+
+The deterministic scheduling logic remains real.
+
+Conceptually:
+
+```text
+Customer Request
+→ Mock Agent / Mock LLM behaviour
+→ Real Tool Executor
+→ Real Deterministic Scheduling Engine
+→ Real SQLite runtime state
+```
+
+Only the model behaviour is mocked; the business-rule engine is not.
+
+---
+
+## 13. LLM Backend Options for Development
+
+### Mock
+
+```env
+LLM_BACKEND=mock
+```
+
+Use for stable, zero-model-cost testing.
+
+### OpenAI-Compatible / Local Development Path
+
+```env
+LLM_BACKEND=local
+LOCAL_LLM_BASE_URL=http://127.0.0.1:1234/v1
+LOCAL_LLM_API_KEY=local
+LOCAL_LLM_MODEL=your-tool-capable-model
+LOCAL_LLM_TIMEOUT_SEC=60
+```
+
+This may point to a local model server such as LM Studio.
+
+It may also point to OpenRouter:
+
+```env
+LLM_BACKEND=local
+LOCAL_LLM_BASE_URL=https://openrouter.ai/api/v1
+LOCAL_LLM_API_KEY=your-key
+LOCAL_LLM_MODEL=your-openrouter-model-id
+LOCAL_LLM_TIMEOUT_SEC=60
+```
+
+### Bedrock
+
+```env
+LLM_BACKEND=bedrock
+AWS_REGION=ap-southeast-1
+BEDROCK_MODEL_ID=...
+```
+
+Use for the final AWS path.
+
+---
+
+## 14. Evaluation Design
+
+### Request Ground Truth
+
+`request_ground_truth.csv` should contain expected values such as:
+
+- category
+- subtype
+- location
+- urgency
+- time window
+- missing fields
+- expected clarification
+- readiness
+
+### Assignment Ground Truth
+
+`assignment_ground_truth.csv` should contain:
+
+- eligible technicians
+- excluded technicians and reasons
+- expected technician
+- expected start/end
+- expected decision status
+- recommendation reason
+
+Ground truth should be manually or deterministically derived from fixed rules and the fixed starting state.
+
+### Critical Rule
+
+Runtime code must never use evaluation files to produce an answer.
+
+Correct architecture:
+
+```text
+Runtime Input
+→ Agent / Engine
+→ Actual Result
+
+Actual Result
+↕ compare offline
+
+Evaluation Ground Truth
+```
+
+Incorrect architecture:
+
+```text
+Agent
+→ reads assignment_ground_truth.csv
+→ returns expected answer
+```
+
+---
+
+## 15. Data Consistency Checks
+
+Before demo/evaluation, verify:
+
+- Every `job_id` referenced by schedules exists
+- Every `technician_id` referenced by schedules exists
+- Every `service_rule_id` exists
+- No active technician is double-booked
+- `scheduled_start < scheduled_end`
+- Scheduled duration matches job duration where required
+- Existing assignments satisfy skill/certification constraints
+- Existing assignments fall within technician shifts
+- Dynamically calculated workload does not exceed capacity
+- Structured-request category/subtype matches `service_rule_id`
+- Ground-truth results are reproducible from deterministic rules
+- Runtime logic never reads evaluation files
+
+---
+
+## 16. Public Reference Sources
+
+Public sources are used primarily to inform data structure, service taxonomy, or rule design; the actual customer, technician, job, schedule, workload, and expected assignment data remain synthetic.
+
+Reference sources used in the Week 1 plan include:
+
+- Google Taskmaster-1 — examples of customer-request style data
+- OneService Chatbot — request fields and clarification patterns
+- DTU Technician and Task Dataset — technician/task/scheduling structure reference
+- CBM Home — service categories and service-rule reference
+- EMA — electrical skill/certification context
+- PUB — plumbing skill/certification context
+- OneMap — Singapore location/zone reference
+
+These sources do not supply the final runtime dataset directly; they inform how the synthetic dataset is structured.
+
+---
+
+## 17. Week 1 Acceptance Criteria
+
+Week 1 data/setup is ready when:
+
+- [ ] 9 service rules are complete and internally consistent
+- [ ] 8 technicians meaningfully exercise skills, certifications, shift, availability, and workload logic
+- [ ] 12 synthetic customers are available
+- [ ] 16 existing jobs and 16 schedule records are valid and influence new assignments
+- [ ] 10 raw customer requests can be loaded reproducibly
+- [ ] Structured requests can be generated consistently from those requests
+- [ ] Incomplete requests produce `ready_for_scheduling = false`
+- [ ] Complete requests can enter deterministic scheduling
+- [ ] Assignment results persist technician, time, decision status, and recommendation reason
+- [ ] Ground Truth remains isolated from runtime
+- [ ] Validation scripts pass all consistency checks
+- [ ] Three demo cases can be run repeatedly from a reset state
+
+---
+
+## 18. Recommended Build / Maintenance Order
+
+1. Finalise the 9 service rules.
+2. Create the 8 technician profiles.
+3. Create the 12 customer profiles.
+4. Create 16 existing jobs and 16 schedule records.
+5. Create the 10 raw customer requests.
+6. Reset and seed SQLite.
+7. Confirm `structured_requests` is generated and usable as the formal scheduling input.
+8. Confirm `assignment_results` persists deterministic scheduling output.
+9. Fill `request_ground_truth.csv` manually.
+10. Fill `assignment_ground_truth.csv` from deterministic rules.
+11. Run seed validation and fix consistency issues.
+12. Finalise `cases.csv` and select the three stable demo cases.
+
+---
+
+## 19. Final Data-Architecture Summary
+
+```text
+Synthetic Seed Data
+        ↓
+SQLite Runtime Database
+        ↓
+Customer Intake Agent
+        ↓
+structured_requests
+        ↓
+Scheduling Operations Agent
+        ↓
+Deterministic Assignment Engine
+        ↓
+assignment_results
+        ↓
+Coordinator Review
+
+Evaluation CSV
+        ↓
+Offline comparison only
+```
+
+The key boundary is:
+
+> **Seed files define a reproducible synthetic business world; SQLite stores runtime state; Agents coordinate the workflow; deterministic Python performs scheduling; evaluation ground truth remains separate and is used only for offline assessment.**
