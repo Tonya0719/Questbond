@@ -2,7 +2,8 @@ from ..schemas.agent import WorkflowStatus
 
 
 ALLOWED_TRANSITIONS = {
-    WorkflowStatus.COLLECTING_INFORMATION: {WorkflowStatus.NEEDS_CLARIFICATION, WorkflowStatus.READY_FOR_SCHEDULING, WorkflowStatus.ERROR},
+    WorkflowStatus.COLLECTING_INFORMATION: {WorkflowStatus.NEEDS_CLARIFICATION, WorkflowStatus.READY_FOR_SCHEDULING,
+                                          WorkflowStatus.HUMAN_REVIEW_REQUIRED, WorkflowStatus.ERROR},
     WorkflowStatus.NEEDS_CLARIFICATION: {WorkflowStatus.COLLECTING_INFORMATION, WorkflowStatus.ERROR},
     WorkflowStatus.READY_FOR_SCHEDULING: {WorkflowStatus.ASSIGNMENT_IN_PROGRESS, WorkflowStatus.ERROR},
     WorkflowStatus.ASSIGNMENT_IN_PROGRESS: {WorkflowStatus.RECOMMENDATION_CREATED, WorkflowStatus.NO_FEASIBLE_ASSIGNMENT,

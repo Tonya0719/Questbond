@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import ssl
+import certifi
 from typing import Any, Callable, Dict, Optional
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -35,7 +37,7 @@ def check_openrouter_credit(
         if request_func is not None:
             payload = request_func(request, timeout_sec)
         else:
-            with urlopen(request, timeout=timeout_sec) as response:
+            with urlopen(request, timeout=timeout_sec, context=ssl.create_default_context(cafile=certifi.where())) as response:
                 payload = json.loads(response.read().decode("utf-8"))
     except HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")

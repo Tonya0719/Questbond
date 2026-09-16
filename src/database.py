@@ -65,6 +65,25 @@ CREATE TABLE IF NOT EXISTS agent_tool_calls (
  agent_name TEXT NOT NULL, tool_name TEXT NOT NULL, input_json TEXT NOT NULL,
  output_json TEXT NOT NULL, execution_status TEXT NOT NULL, duration_ms INTEGER NOT NULL,
  created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS request_contacts (
+ request_id TEXT PRIMARY KEY REFERENCES customer_requests(request_id),
+ name TEXT NOT NULL, email TEXT NOT NULL, apartment TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS booking_confirmations (
+ assignment_id TEXT PRIMARY KEY REFERENCES assignment_results(assignment_id),
+ request_id TEXT NOT NULL UNIQUE REFERENCES customer_requests(request_id),
+ job_id TEXT NOT NULL UNIQUE REFERENCES jobs(job_id),
+ coordinator_id TEXT NOT NULL, confirmed_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS request_submissions (
+ idempotency_key TEXT PRIMARY KEY, request_id TEXT NOT NULL UNIQUE REFERENCES customer_requests(request_id),
+ payload_hash TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS request_triage (
+ request_id TEXT PRIMARY KEY REFERENCES customer_requests(request_id),
+ hazard_flags TEXT NOT NULL, injection_flag INTEGER NOT NULL, issue_categories TEXT NOT NULL,
+ human_review_required INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS agent_model_calls (
+ call_id TEXT PRIMARY KEY, session_id TEXT NOT NULL REFERENCES agent_sessions(session_id),
+ agent_name TEXT NOT NULL, model_id TEXT, generation_id TEXT, input_tokens INTEGER, output_tokens INTEGER,
+ cost_usd REAL, execution_status TEXT NOT NULL, duration_ms INTEGER NOT NULL, created_at TEXT NOT NULL);
 """
 
 

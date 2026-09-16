@@ -25,6 +25,12 @@ def validate_assignment_recommendation(connection, assignment_id: str) -> dict:
     rule = connection.execute("SELECT * FROM service_rules WHERE service_rule_id=?", (request["service_rule_id"],)).fetchone()
     start, end = datetime.fromisoformat(assignment["scheduled_start"]), datetime.fromisoformat(assignment["scheduled_end"])
     violations = []
+    if int((end - start).total_seconds() / 60) != rule["default_duration_min"]:
+        violations.append("DURATION_MISMATCH")
+    company = connection.execute("SELECT * FROM company_profile LIMIT 1").fetchone()
+    if start.date() != end.date() or not (time.fromisoformat(company["operating_start"]) <= start.time()
+                                        and end.time() <= time.fromisoformat(company["operating_end"])):
+        violations.append("OUTSIDE_OPERATING_HOURS")
     if not request["ready_for_scheduling"]:
         violations.append("REQUEST_NOT_READY")
     if not has_required_skills(technician, rule):

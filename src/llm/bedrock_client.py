@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
+from time import perf_counter
+
+from .usage import record_model_call
 
 from ..config import settings
 
@@ -32,8 +35,17 @@ class BedrockConverseClient:
 def run_tool_loop(client, executor, session_id: str, agent_name: str, messages: list,
                   system_prompt: str, tool_specs: list, max_tool_turns: int = 8) -> tuple[str, list]:
     transcript = list(messages)
+    tool_count = 0
     for _ in range(max_tool_turns):
-        response = client.converse(transcript, system_prompt, tool_specs)
+        started = perf_counter()
+        try:
+            response = client.converse(transcript, system_prompt, tool_specs)
+        except Exception:
+            record_model_call(executor.connection, session_id, agent_name, client, {},
+                              int((perf_counter() - started) * 1000), "ERROR")
+            raise
+        record_model_call(executor.connection, session_id, agent_name, client, response,
+                          int((perf_counter() - started) * 1000))
         output = response["output"]["message"]
         transcript.append(output)
         tool_uses = [block["toolUse"] for block in output.get("content", []) if "toolUse" in block]
@@ -42,11 +54,14 @@ def run_tool_loop(client, executor, session_id: str, agent_name: str, messages: 
             return text, transcript
         results = []
         for call in tool_uses:
+            tool_count += 1
+            if tool_count > 16:
+                raise RuntimeError("Agent exceeded the maximum tool calls (16); coordinator review required.")
             try:
                 value = executor.execute(session_id, agent_name, call["name"], call.get("input", {}))
                 result = {"toolUseId": call["toolUseId"], "content": [{"json": value}], "status": "success"}
             except Exception as exc:
-                result = {"toolUseId": call["toolUseId"], "content": [{"text": str(exc)}], "status": "error"}
+                raise RuntimeError(f"Tool '{call['name']}' failed: {exc}. No booking was committed.") from exc
             results.append({"toolResult": result})
         transcript.append({"role": "user", "content": results})
     raise RuntimeError(f"Agent exceeded maximum tool turns ({max_tool_turns})")

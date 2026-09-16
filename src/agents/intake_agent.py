@@ -1,22 +1,24 @@
 from __future__ import annotations
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from ..config import settings
 from ..llm.bedrock_client import run_tool_loop
 from ..llm.mock_client import MockAgentClient
 from ..schemas.agent import AgentName
 from .base_agent import BaseAgent
+from .prompts import INTAKE_PROMPT
 
 
 class CustomerIntakeAgent(BaseAgent):
     agent_name = AgentName.INTAKE.value
-    system_prompt = """You are the Customer Intake Agent. Collect only scheduling-relevant facts.
-Use the provided tools for customer context and canonical service rules. Never invent service-rule
-requirements. Save the structured request. If critical fields are missing, ask one concise
-clarification question. Never select a technician or make a scheduling decision."""
+    system_prompt = INTAKE_PROMPT
 
     def run(self, session_id: str, request_id: str, customer_id: str, raw_message: str) -> dict:
         if settings.llm_backend in {"bedrock", "local"} and self.llm_client is not None:
-            prompt = (f"request_id={request_id}; customer_id={customer_id}; customer message={raw_message}. "
+            today = datetime.now(ZoneInfo("Asia/Singapore")).date().isoformat()
+            prompt = (f"Today is {today}; timezone is Asia/Singapore. Use local ISO datetimes without timezone offsets. "
+                      f"request_id={request_id}; customer_id={customer_id}; customer message={raw_message}. "
                       "Use tools to build the request and finish with either READY or a clarification question.")
             text, _ = run_tool_loop(self.llm_client, self.executor, session_id, self.agent_name,
                                     [{"role": "user", "content": [{"text": prompt}]}],
@@ -41,5 +43,8 @@ clarification question. Never select a technician or make a scheduling decision.
         if request["ready_for_scheduling"]:
             message = "Request information is complete and ready for scheduling."
         else:
-            message = "Please provide: " + ", ".join(request["missing_fields"])
+            labels = {"service_rule_id": "the type of repair", "zone": "your area",
+                      "window_start": "your available start time", "window_end": "your available end time",
+                      "estimated_duration_min": "a supported service type"}
+            message = "Could you provide " + ", ".join(dict.fromkeys(labels.get(field, field) for field in request["missing_fields"])) + "?"
         return {"message": message, "request": request}

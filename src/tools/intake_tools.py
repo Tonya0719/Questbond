@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Optional
 
 from ..schemas.request import StructuredRequest
@@ -45,6 +46,15 @@ def save_structured_request(connection, request_id: str, customer_id: Optional[s
     raw = connection.execute("SELECT * FROM customer_requests WHERE request_id=?", (request_id,)).fetchone()
     if raw is None:
         raise ValueError(f"Unknown request_id: {request_id}")
+    messages = connection.execute("""SELECT m.content FROM agent_messages m JOIN agent_sessions s ON s.session_id=m.session_id
+        WHERE s.request_id=? AND m.role='user' ORDER BY m.created_at""", (request_id,)).fetchall()
+    text = " ".join(row["content"] for row in messages) or raw["raw_message"]
+    # Vague words are not evidence for exact timestamps. Explicit booking-form
+    # windows or a later clarification supply the required evidence.
+    explicit_iso = re.findall(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}", text)
+    clock_times = re.findall(r"\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b", text, re.I)
+    if re.search(r"\b(?:sometime|later|afternoon|whenever)\b", text, re.I) and len(explicit_iso) < 2 and len(clock_times) < 2:
+        window_start = window_end = None
     rule = None
     if service_rule_id:
         rule = connection.execute("SELECT * FROM service_rules WHERE service_rule_id=?", (service_rule_id,)).fetchone()

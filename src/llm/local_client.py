@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import ssl
+import certifi
 from typing import Any, Callable, Dict, List, Optional
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -56,6 +58,7 @@ class LocalOpenAICompatibleClient:
             except (KeyError, json.JSONDecodeError, TypeError) as exc:
                 raise LocalLLMError("Local LLM returned an invalid tool call") from exc
         return {"output": {"message": {"role": "assistant", "content": content}},
+                "id": response.get("id"),
                 "stopReason": "tool_use" if message.get("tool_calls") else "end_turn",
                 "usage": response.get("usage", {})}
 
@@ -96,11 +99,12 @@ class LocalOpenAICompatibleClient:
             headers["Authorization"] = f"Bearer {api_key}"
         request = Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="POST")
         try:
-            with urlopen(request, timeout=timeout_sec) as response:
+            with urlopen(request, timeout=timeout_sec, context=ssl.create_default_context(cafile=certifi.where())) as response:
                 return json.loads(response.read().decode("utf-8"))
         except HTTPError as exc:
-            detail = exc.read().decode("utf-8", errors="replace")
-            raise LocalLLMError(f"Local LLM HTTP {exc.code}: {detail[:500]}") from exc
+            hint = {401: "Check the API key.", 402: "Check your credit balance.",
+                    429: "Rate limit reached; try later.", 400: "Check model and tool compatibility."}.get(exc.code, "Provider request failed.")
+            raise LocalLLMError(f"Model API HTTP {exc.code}. {hint}") from exc
         except URLError as exc:
             raise LocalLLMError(f"Cannot connect to local LLM at {url}: {exc.reason}") from exc
         except json.JSONDecodeError as exc:

@@ -3,21 +3,25 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Iterable, Optional, Type
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from ..schemas.agent import AgentName
 from . import intake_tools, scheduling_tools
 
 
-class CustomerContextInput(BaseModel):
+class ToolInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
+class CustomerContextInput(ToolInput):
     customer_id: str
 
 
-class ServiceRuleLookupInput(BaseModel):
+class ServiceRuleLookupInput(ToolInput):
     query: str
 
 
-class SaveStructuredRequestInput(BaseModel):
+class SaveStructuredRequestInput(ToolInput):
     request_id: str
     customer_id: Optional[str] = None
     service_rule_id: Optional[str] = None
@@ -27,11 +31,11 @@ class SaveStructuredRequestInput(BaseModel):
     window_end: Optional[str] = None
 
 
-class RequestIdInput(BaseModel):
+class RequestIdInput(ToolInput):
     request_id: str
 
 
-class AssignmentIdInput(BaseModel):
+class AssignmentIdInput(ToolInput):
     assignment_id: str
 
 

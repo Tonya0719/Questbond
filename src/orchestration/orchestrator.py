@@ -11,6 +11,7 @@ from ..schemas.handoff import AgentHandoff
 from ..tools import ToolExecutor, build_registry
 from .handoff import persist_handoff
 from .state_machine import ensure_transition
+from ..services.triage_service import get_triage
 
 
 class AgentOrchestrator:
@@ -51,7 +52,7 @@ class AgentOrchestrator:
         replies = [row[0] for row in self.connection.execute(
             "SELECT content FROM agent_messages WHERE session_id=? AND role='user' ORDER BY created_at",
             (session_id,)).fetchall()]
-        combined = " ".join(dict.fromkeys([raw] + replies))
+        combined = " ".join(replies or [raw])
         return self._process_intake(session_id, session["request_id"], session["customer_id"], combined)
 
     def _process_intake(self, session_id: str, request_id: str, customer_id: str,
@@ -59,6 +60,17 @@ class AgentOrchestrator:
         try:
             intake = self.intake_agent.run(session_id, request_id, customer_id, raw_message)
             request = intake["request"]
+            triage = get_triage(self.connection, request_id)
+            if triage["human_review_required"]:
+                reason = ("Possible safety hazard: " + ", ".join(triage["hazard_flags"]) if triage["hazard_flags"]
+                          else "Multiple service issues were reported; the coordinator must separate and review them.")
+                message = reason + " No technician has been booked."
+                self._transition(session_id, WorkflowStatus.HUMAN_REVIEW_REQUIRED, AgentName.INTAKE.value)
+                handoff = self._handoff(session_id, AgentName.INTAKE.value, "human_coordinator",
+                                        "HUMAN_REVIEW_REQUIRED", request_id, payload={"message": message}, evidence=triage)
+                self._record_message(session_id, "assistant", message)
+                return AgentResponse(session_id=session_id, request_id=request_id,
+                    workflow_status=WorkflowStatus.HUMAN_REVIEW_REQUIRED, message=message, handoffs=[handoff])
             if not request.get("ready_for_scheduling"):
                 self._transition(session_id, WorkflowStatus.NEEDS_CLARIFICATION, AgentName.INTAKE.value)
                 handoff = self._handoff(session_id, AgentName.INTAKE.value, "customer",
@@ -96,10 +108,11 @@ class AgentOrchestrator:
             self._record_message(session_id, "assistant", scheduling["message"])
             return AgentResponse(session_id=session_id, request_id=request_id, workflow_status=final_status,
                 message=scheduling["message"], handoffs=[ready_handoff, final_handoff], result=scheduling)
-        except Exception:
+        except Exception as error:
             self.connection.execute("UPDATE agent_sessions SET workflow_status=?, updated_at=? WHERE session_id=?",
                 (WorkflowStatus.ERROR.value, datetime.now(timezone.utc).isoformat(), session_id))
             self.connection.commit()
+            self._record_message(session_id, "assistant", f"Processing failed: {error}. Coordinator review is required.")
             raise
 
     def _record_message(self, session_id: str, role: str, content: str):

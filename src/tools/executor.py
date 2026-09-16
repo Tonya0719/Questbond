@@ -28,9 +28,27 @@ class ToolExecutor:
             if agent_name not in definition.allowed_agents:
                 raise ToolExecutionError(f"Agent {agent_name} is not allowed to call {tool_name}")
             validated = definition.input_model.model_validate(arguments)
-            output = definition.handler(self.connection, **validated.model_dump())
+            session = self.connection.execute("SELECT * FROM agent_sessions WHERE session_id=?", (session_id,)).fetchone()
+            if not session or session["current_agent"] != agent_name:
+                raise ToolExecutionError("The tool call is not owned by the active session agent")
+            scoped = validated.model_dump()
+            if "request_id" in scoped and scoped["request_id"] != session["request_id"]:
+                raise ToolExecutionError("The tool cannot access a different request")
+            if scoped.get("customer_id") and scoped["customer_id"] != session["customer_id"]:
+                raise ToolExecutionError("The tool cannot access a different customer")
+            if "assignment_id" in scoped:
+                assignment = self.connection.execute("SELECT request_id FROM assignment_results WHERE assignment_id=?",
+                                                     (scoped["assignment_id"],)).fetchone()
+                if not assignment or assignment["request_id"] != session["request_id"]:
+                    raise ToolExecutionError("The tool cannot access a different request's assignment")
+            cached = None
+            if tool_name == "recommend_assignment":
+                cached = self.connection.execute("""SELECT output_json FROM agent_tool_calls
+                    WHERE session_id=? AND tool_name='recommend_assignment' AND execution_status='SUCCESS'
+                    ORDER BY created_at DESC LIMIT 1""", (session_id,)).fetchone()
+            output = json.loads(cached["output_json"]) if cached else definition.handler(self.connection, **validated.model_dump())
             return output
-        except (ValidationError, ValueError, ToolExecutionError) as exc:
+        except Exception as exc:
             status = "ERROR"
             output = {"error": str(exc)}
             raise ToolExecutionError(str(exc)) from exc

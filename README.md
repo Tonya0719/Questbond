@@ -1,10 +1,12 @@
 # Technician Scheduling Agent
 
-Week 1 deterministic field-service scheduling MVP. Natural-language intake is isolated from the scheduling engine; SQLite is used for runtime state and CSV files are used only by evaluation.
+Week 1 field-service scheduling MVP with a business request form, agent handoffs, auditable recommendations, coordinator confirmation, technician schedules, and downloadable customer email drafts. SQLite is used for runtime state and CSV files are used only by evaluation.
 
 The runtime uses two specialized agents: a Customer Intake Agent and a Scheduling Operations Agent. They communicate through validated handoffs and can call only explicitly allowed tools. The LLM coordinates interaction; deterministic Python remains authoritative for technician selection and scheduling.
 
 See [MULTI_AGENT_ARCHITECTURE.md](MULTI_AGENT_ARCHITECTURE.md) for the architecture, tool contracts, state machine, AWS/Bedrock interaction, and human-in-the-loop boundary.
+
+See [the implementation review](docs/IMPLEMENTATION_REVIEW.md) and [35-case validation matrix](docs/TEST_MATRIX.md) for the latest guardrails, implemented suggestions, test coverage and remaining live-evaluation work. The dashboard now records provider-reported model cost per request. Offline tests should use `LLM_BACKEND=mock` explicitly when `.env` points to a paid provider.
 
 ## Setup
 
@@ -12,12 +14,26 @@ See [MULTI_AGENT_ARCHITECTURE.md](MULTI_AGENT_ARCHITECTURE.md) for the architect
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
-python scripts/reset_db.py
+python scripts/init_db.py
 python scripts/validate_seed_data.py
 pytest
 python evaluation/run_eval.py
 streamlit run app.py
 ```
+
+On macOS/Linux, activate the environment with `source .venv/bin/activate` instead of the Windows command. Initialize a fresh database once. `reset_db.py` deletes runtime records and should only be used intentionally to rebuild demo data.
+
+## Business demo
+
+1. Customer: enter a synthetic name, email, apartment, area, future date and time window. Try `The kitchen pipe is leaking` or `The aircon is leaking`.
+2. The Intake Agent maps the service and saves validated fields. The Scheduling Operations Agent calls the deterministic engine, validates its result, and creates a recommendation.
+3. Coordinator: select the request, inspect candidates, exclusions, tool inputs/results and handoffs, then confirm the recommendation.
+4. Confirmation revalidates availability inside a SQLite write transaction, creates one work order, and adds it to the technician schedule.
+5. Download the customer email draft. No message is sent.
+
+The view switcher is a local demo, not authentication. Do not expose real customer records until login and server-side role checks are added. Disruption recovery, job completion/customer confirmation, and email sending are future milestones. Travel-time buffers are not implemented in this repository's slot search yet.
+
+The architecture document includes a historical missing-feature list. The implemented code already contains the two agents, Converse tool loop, tool registry/executor, workflow state machine, session/handoff/tool audits, and recommendation validation.
 
 The default `LLM_BACKEND=mock` requires no model server or AWS credentials.
 

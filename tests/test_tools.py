@@ -44,3 +44,12 @@ def test_assignment_tool_returns_validated_trace(db):
     assert validation == {"assignment_id": assignment["assignment_id"], "valid": True, "violations": []}
     assert trace["selected_candidate"]["technician_id"] == "T002"
     assert trace["eligible_candidates"]
+
+
+def test_agent_cannot_write_another_request(db):
+    _session(db)
+    executor = ToolExecutor(db, build_registry())
+    with pytest.raises(ToolExecutionError, match="different request"):
+        executor.execute("SES-TEST", AgentName.INTAKE.value, "save_structured_request",
+                         {"request_id": "R002", "service_rule_id": "AC-LEAK"})
+    assert db.execute("SELECT service_rule_id FROM structured_requests WHERE request_id='R002'").fetchone()[0] == "AC-ROUTINE"

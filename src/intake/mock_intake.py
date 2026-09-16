@@ -8,6 +8,7 @@ class MockIntake:
         "drain blockage": "PL-BLOCK", "toilet blockage": "PL-BLOCK", "fixture replacement": "PL-FIXTURE",
         "socket repair": "EL-REPAIR", "light repair": "EL-REPAIR", "power trip": "EL-TRIP",
         "minor installation": "EL-INSTALL",
+        "pipe is leaking": "PL-LEAK", "tap is leaking": "PL-LEAK",
     }
     ZONES = ("North", "South", "East", "West", "Central")
 

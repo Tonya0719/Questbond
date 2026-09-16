@@ -1,17 +1,17 @@
 from __future__ import annotations
+import json
 
 from ..config import settings
 from ..llm.bedrock_client import run_tool_loop
 from ..schemas.agent import AgentName
 from .base_agent import BaseAgent
+from .prompts import SCHEDULING_PROMPT
+from ..services.decision_service import explain_decision
 
 
 class SchedulingOperationsAgent(BaseAgent):
     agent_name = AgentName.SCHEDULING.value
-    system_prompt = """You are the Scheduling Operations Agent. Never choose, replace, or rerank a
-technician yourself. Use recommend_assignment for every decision, validate the returned recommendation,
-and ground explanations only in the decision trace. Return incomplete requests to intake and route
-no-feasible or invalid outcomes to human review. Never modify the current schedule."""
+    system_prompt = SCHEDULING_PROMPT
 
     def run(self, session_id: str, request_id: str) -> dict:
         status = self.call_tool(session_id, "get_request_status", request_id=request_id)
@@ -23,21 +23,26 @@ no-feasible or invalid outcomes to human review. Never modify the current schedu
             text, _ = run_tool_loop(self.llm_client, self.executor, session_id, self.agent_name,
                                     [{"role": "user", "content": [{"text": prompt}]}],
                                     self.system_prompt, self.tool_specs)
-            latest = self.executor.connection.execute(
-                "SELECT assignment_id FROM assignment_results WHERE request_id=? ORDER BY created_at DESC LIMIT 1",
-                (request_id,)).fetchone()
+            latest = self.executor.connection.execute("""SELECT output_json FROM agent_tool_calls
+                WHERE session_id=? AND tool_name='recommend_assignment' AND execution_status='SUCCESS'
+                ORDER BY created_at DESC LIMIT 1""", (session_id,)).fetchone()
             if not latest:
                 raise RuntimeError("Scheduling agent completed without creating an assignment result")
-            assignment_id = latest["assignment_id"]
+            assignment_id = json.loads(latest["output_json"])["assignment_id"]
             validation = self.call_tool(session_id, "validate_assignment_recommendation", assignment_id=assignment_id)
             trace = self.call_tool(session_id, "get_assignment_decision_trace", assignment_id=assignment_id)
-            return {"message": text, "assignment": trace, "validation": validation}
+            row = self.executor.connection.execute(
+                "SELECT * FROM assignment_results WHERE assignment_id=?", (assignment_id,)).fetchone()
+            assignment = dict(row)
+            assignment["recommendation_reason"] = json.loads(assignment["recommendation_reason"])
+            return {"message": explain_decision(self.executor.connection, assignment, validation, trace),
+                    "model_explanation": text, "assignment": assignment, "validation": validation, "decision_trace": trace}
         assignment = self.call_tool(session_id, "recommend_assignment", request_id=request_id)
         validation = self.call_tool(session_id, "validate_assignment_recommendation",
                                     assignment_id=assignment["assignment_id"])
         trace = self.call_tool(session_id, "get_assignment_decision_trace",
                                assignment_id=assignment["assignment_id"])
-        return {"message": self._explain(assignment, validation), "assignment": assignment,
+        return {"message": explain_decision(self.executor.connection, assignment, validation, trace), "assignment": assignment,
                 "validation": validation, "decision_trace": trace}
 
     @staticmethod
