@@ -29,7 +29,7 @@ def authorize_view():
             st.session_state['dispatch_appearance'] = appearance
             st.rerun()
         return role
-    st.title('Dispatch')
+    st.title('Mendigo')
     st.subheader(f'{role} sign in')
     st.caption('Enter your team’s shared password to access this workspace.')
     expected = staff_password(role)

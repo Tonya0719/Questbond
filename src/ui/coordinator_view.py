@@ -30,7 +30,7 @@ def render(connection):
         LEFT JOIN booking_confirmations bc ON bc.request_id=cr.request_id
         ORDER BY cr.received_at DESC, cr.rowid DESC''').fetchall()
     booked = sum(bool(row['job_id']) for row in requests)
-    st.markdown(f'<div class="dispatch-top"><span class="dispatch-brand">Dispatch</span><span class="dispatch-muted">Maintenance scheduling agent</span><span>{len(requests)} requests / {booked} booked / {len(requests)-booked} open</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="dispatch-top"><span class="dispatch-brand">Mendigo</span><span class="dispatch-muted">Maintenance scheduling agent</span><span>{len(requests)} requests / {booked} booked / {len(requests)-booked} open</span></div>', unsafe_allow_html=True)
     if not requests:
         stamp('Queue empty', 'Use the Customer view to submit a maintenance request.')
         return

@@ -1,0 +1,5 @@
+# Replace this with a domain whose DNS A record points to your Lightsail static IP.
+mendigo.example.com {
+    encode gzip
+    reverse_proxy 127.0.0.1:8501
+}

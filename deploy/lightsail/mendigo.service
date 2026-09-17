@@ -1,0 +1,19 @@
+[Unit]
+Description=Mendigo maintenance scheduling
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/Questbond
+ExecStart=/home/ubuntu/Questbond/.venv/bin/python -m streamlit run app.py --server.address=127.0.0.1 --server.port=8501 --server.headless=true --browser.gatherUsageStats=false
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target

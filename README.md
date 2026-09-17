@@ -1,4 +1,6 @@
-# Technician Scheduling Agent
+# Mendigo — Technician Scheduling Agent
+
+For AWS hosting, follow [the Lightsail deployment guide](docs/LIGHTSAIL.md), adapted from the organizers' ShowMeYourAgent starter kit. It uses Singapore, Ubuntu, browser SSH, a persistent database and HTTPS. The setup does not require manually creating an EC2 key pair.
 
 Week 1 field-service scheduling MVP with a business request form, agent handoffs, auditable recommendations, coordinator confirmation, technician schedules, and downloadable customer email drafts. SQLite is used for runtime state and CSV files are used only by evaluation.
 
