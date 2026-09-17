@@ -72,6 +72,20 @@ The credit check is developer-only: it is not called automatically by the Agent 
 To use Amazon Bedrock instead, set `LLM_BACKEND=bedrock`, `AWS_REGION`, and `BEDROCK_MODEL_ID`.
 # Shared staff sign-in
 
+## Organizer LLM gateway
+
+Set the following in your ignored `.env`, then restart the app:
+
+```env
+LLM_BACKEND=gateway
+LLM_GATEWAY_URL=https://api.softwaresystems.app
+LLM_GATEWAY_API_KEY=your-private-key
+LLM_MODEL=global.anthropic.claude-sonnet-4-5-20250929-v1:0
+```
+
+The gateway exposes an OpenAI-compatible `/v1/chat/completions` endpoint with Bearer authentication and tool calls. This path uses the organizer key, not direct AWS credentials. The server receives synthetic/customer prompts and tool results needed for inference; the app's database remains local. Run `python scripts/test_agent_connection.py` for an isolated synthetic end-to-end check. Gateway costs are unavailable unless it reports them; missing prices are never interpreted as free usage.
+
+
 The Customer form is public. Select Technician or Coordinator in **Sign in as** to open a password-protected staff workspace. Sign out ends staff access; switching roles requires signing in again.
 
 Development demo passwords: Technician `DispatchTech2026!`; Coordinator `DispatchOps2026!`. Override them with `TECHNICIAN_PASSWORD` and `COORDINATOR_PASSWORD` in your ignored `.env`. Outside `APP_ENV=development`, staff sign-in stays disabled until these passwords are configured. Restart the app after changing them.

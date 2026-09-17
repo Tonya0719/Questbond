@@ -13,6 +13,7 @@ from .handoff import persist_handoff
 from .state_machine import ensure_transition
 from ..services.triage_service import get_triage
 from ..services.customer_response import customer_response, customer_text
+from ..llm.gateway_client import GatewayClient
 
 
 class AgentOrchestrator:
@@ -22,7 +23,7 @@ class AgentOrchestrator:
         self.executor = ToolExecutor(connection, self.registry)
         if llm_client is None:
             clients = {"mock": MockAgentClient, "local": LocalOpenAICompatibleClient,
-                       "bedrock": BedrockConverseClient}
+                       "bedrock": BedrockConverseClient, "gateway": GatewayClient}
             try:
                 llm_client = clients[settings.llm_backend]()
             except KeyError as exc:

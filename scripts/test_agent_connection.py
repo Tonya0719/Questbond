@@ -16,11 +16,12 @@ from src.llm.usage import request_usage
 
 
 def main():
-    if settings.llm_backend != "local" or settings.local_llm_base_url != "https://openrouter.ai/api/v1":
-        print("Configure the OpenRouter backend in questbond/.env first.")
+    if settings.llm_backend not in {'local', 'gateway'}:
+        print("Configure the local or gateway backend in questbond/.env first.")
         return 1
-    if not settings.local_llm_api_key or settings.local_llm_api_key in {"local", "YOUR_OPENROUTER_KEY"}:
-        print("An OpenRouter key has not been configured.")
+    key = settings.llm_gateway_api_key if settings.llm_backend == 'gateway' else settings.local_llm_api_key
+    if not key or key in {"local", "YOUR_OPENROUTER_KEY"}:
+        print("A model API key has not been configured.")
         return 1
     day = (datetime.now(ZoneInfo("Asia/Singapore")) + timedelta(days=1)).date().isoformat()
     with tempfile.TemporaryDirectory() as directory:
@@ -30,7 +31,7 @@ def main():
             response = submit_request(connection, "The kitchen pipe is leaking", contact={
                 "name": "Synthetic Resident", "email": "resident@example.com", "apartment": "Demo Block A"},
                 scheduling_context=f"East {day}T10:00 {day}T13:00")
-            print("Live model:", settings.local_llm_model)
+            print("Live model:", settings.llm_model if settings.llm_backend == 'gateway' else settings.local_llm_model)
             print("Workflow:", response.workflow_status.value)
             if response.result:
                 assignment = response.result.get("assignment", {})
