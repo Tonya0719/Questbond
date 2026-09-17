@@ -12,6 +12,7 @@ from ..tools import ToolExecutor, build_registry
 from .handoff import persist_handoff
 from .state_machine import ensure_transition
 from ..services.triage_service import get_triage
+from ..services.customer_response import customer_response, customer_text
 
 
 class AgentOrchestrator:
@@ -29,13 +30,14 @@ class AgentOrchestrator:
         self.intake_agent = CustomerIntakeAgent(self.executor, self.registry, llm_client)
         self.scheduling_agent = SchedulingOperationsAgent(self.executor, self.registry, llm_client)
 
-    def run_request(self, request_id: str, customer_id: str, raw_message: str) -> AgentResponse:
+    def run_request(self, request_id: str, customer_id: str, raw_message: str, customer_message=None) -> AgentResponse:
         session_id = f"SES-{uuid4().hex[:12]}"
         now = datetime.now(timezone.utc).isoformat()
         self.connection.execute("INSERT INTO agent_sessions VALUES (?,?,?,?,?,?,?)",
             (session_id, request_id, customer_id, AgentName.INTAKE.value,
              WorkflowStatus.COLLECTING_INFORMATION.value, now, now))
-        self._record_message(session_id, "user", raw_message)
+        public = customer_message or self.connection.execute('SELECT raw_message FROM customer_requests WHERE request_id=?', (request_id,)).fetchone()[0]
+        self._record_message(session_id, "user", raw_message, public)
         self.connection.commit()
         return self._process_intake(session_id, request_id, customer_id, raw_message)
 
@@ -43,6 +45,14 @@ class AgentOrchestrator:
         session = self.connection.execute("SELECT * FROM agent_sessions WHERE session_id=?", (session_id,)).fetchone()
         if not session:
             raise ValueError(f"Unknown session_id: {session_id}")
+        if self.connection.execute('SELECT 1 FROM booking_confirmations WHERE request_id=?', (session['request_id'],)).fetchone():
+            raise ValueError('A confirmed visit must be changed by the coordinator.')
+        if session['workflow_status'] == WorkflowStatus.NO_FEASIBLE_ASSIGNMENT.value:
+            request = self.connection.execute('SELECT * FROM structured_requests WHERE request_id=?', (session['request_id'],)).fetchone()
+            raw = self.connection.execute('SELECT raw_message FROM customer_requests WHERE request_id=?', (session['request_id'],)).fetchone()[0]
+            # A fresh attempt retains prior audit records and avoids cached recommendations.
+            context = f"{message}\n{request['zone'] or ''}\n{raw}"
+            return self.run_request(session['request_id'], session['customer_id'], context, customer_message=message)
         if session["workflow_status"] != WorkflowStatus.NEEDS_CLARIFICATION.value:
             raise ValueError("Only sessions awaiting clarification can receive a customer reply")
         self._transition(session_id, WorkflowStatus.COLLECTING_INFORMATION, AgentName.INTAKE.value)
@@ -115,9 +125,12 @@ class AgentOrchestrator:
             self._record_message(session_id, "assistant", f"Processing failed: {error}. Coordinator review is required.")
             raise
 
-    def _record_message(self, session_id: str, role: str, content: str):
+    def _record_message(self, session_id: str, role: str, content: str, public_content=None):
+        message_id = f"MSG-{uuid4().hex[:12]}"
         self.connection.execute("INSERT INTO agent_messages VALUES (?,?,?,?,?)",
-            (f"MSG-{uuid4().hex[:12]}", session_id, role, content, datetime.now(timezone.utc).isoformat()))
+            (message_id, session_id, role, content, datetime.now(timezone.utc).isoformat()))
+        public = (public_content if public_content is not None else content) if role == 'user' else customer_response(self.connection, session_id)
+        self.connection.execute('INSERT INTO customer_messages VALUES (?,?)', (message_id, customer_text(public)))
         self.connection.commit()
 
     def _transition(self, session_id: str, target: WorkflowStatus, current_agent: str):

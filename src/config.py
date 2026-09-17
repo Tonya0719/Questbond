@@ -11,6 +11,8 @@ ROOT = Path(__file__).resolve().parents[1]
 @dataclass(frozen=True)
 class Settings:
     app_env: str = os.getenv("APP_ENV", "development")
+    technician_password: str = os.getenv("TECHNICIAN_PASSWORD", "")
+    coordinator_password: str = os.getenv("COORDINATOR_PASSWORD", "")
     db_path: Path = ROOT / os.getenv("DB_PATH", "data/runtime/technician_scheduling.db")
     intake_backend: str = os.getenv("INTAKE_BACKEND", "mock")
     llm_backend: str = os.getenv("LLM_BACKEND", os.getenv("INTAKE_BACKEND", "mock"))

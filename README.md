@@ -70,3 +70,10 @@ python scripts/check_llm_credit.py
 The credit check is developer-only: it is not called automatically by the Agent and does not modify SQLite runtime state.
 
 To use Amazon Bedrock instead, set `LLM_BACKEND=bedrock`, `AWS_REGION`, and `BEDROCK_MODEL_ID`.
+# Shared staff sign-in
+
+The Customer form is public. Select Technician or Coordinator in **Sign in as** to open a password-protected staff workspace. Sign out ends staff access; switching roles requires signing in again.
+
+Development demo passwords: Technician `DispatchTech2026!`; Coordinator `DispatchOps2026!`. Override them with `TECHNICIAN_PASSWORD` and `COORDINATOR_PASSWORD` in your ignored `.env`. Outside `APP_ENV=development`, staff sign-in stays disabled until these passwords are configured. Restart the app after changing them.
+
+This is shared role access for the hackathon, not individual staff authentication. A signed-in technician can select any technician's demo schedule. Per-person accounts and access restrictions are a separate milestone. The short retry cooldown applies only to the current browser session.

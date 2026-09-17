@@ -55,6 +55,9 @@ CREATE TABLE IF NOT EXISTS agent_sessions (
 CREATE TABLE IF NOT EXISTS agent_messages (
  message_id TEXT PRIMARY KEY, session_id TEXT NOT NULL REFERENCES agent_sessions(session_id),
  role TEXT NOT NULL, content TEXT NOT NULL, created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS customer_messages (
+ message_id TEXT PRIMARY KEY REFERENCES agent_messages(message_id),
+ content TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS agent_handoffs (
  handoff_id TEXT PRIMARY KEY, session_id TEXT NOT NULL REFERENCES agent_sessions(session_id),
  source_agent TEXT NOT NULL, target_agent TEXT NOT NULL, handoff_type TEXT NOT NULL,
