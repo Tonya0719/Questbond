@@ -2,6 +2,8 @@
 
 For AWS hosting, follow [the Lightsail deployment guide](docs/LIGHTSAIL.md), adapted from the organizers' ShowMeYourAgent starter kit. It uses Singapore, Ubuntu, browser SSH, a persistent database and HTTPS. The setup does not require manually creating an EC2 key pair.
 
+After the initial deployment, push changes to `main` and run `bash deploy/lightsail/update.sh` on the server for a validated one-command update.
+
 Week 1 field-service scheduling MVP with a business request form, agent handoffs, auditable recommendations, coordinator confirmation, technician schedules, and downloadable customer email drafts. SQLite is used for runtime state and CSV files are used only by evaluation.
 
 The runtime uses two specialized agents: a Customer Intake Agent and a Scheduling Operations Agent. They communicate through validated handoffs and can call only explicitly allowed tools. The LLM coordinates interaction; deterministic Python remains authoritative for technician selection and scheduling.

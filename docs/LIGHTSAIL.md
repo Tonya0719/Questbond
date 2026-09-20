@@ -53,11 +53,14 @@ Open https://YOUR-HOSTNAME. Caddy handles certificates and proxies Streamlit Web
 
 ## Updates and data
 
+After committing and pushing changes to `main`, update the running server with one command:
+
 ```bash
 cd /home/ubuntu/Questbond
-git pull --ff-only
-bash deploy/lightsail/setup.sh
+bash deploy/lightsail/update.sh
 ```
+
+The update script refuses a dirty server checkout, fetches and fast-forwards to `origin/main`, installs requirements, validates the production configuration, and runs the test suite with the mock model so deployment does not consume gateway credits. It restarts `mendigo.service` only after those checks pass, then verifies the private health endpoint and reports the public HTTPS result. If the service configuration or initial server packages need to be installed, use `bash deploy/lightsail/setup.sh` instead.
 
 Data is stored at /home/ubuntu/mendigo-data/mendigo.db, outside the code checkout. Never run reset_db.py on a deployed database. Before updates, take a Lightsail snapshot while the app is stopped for a consistent database copy; retain backups separately before deleting an instance. Stop/start preserves disk data, but deleting the instance requires a retained backup to recover it. Gateway usage and Lightsail charges are separate; confirm which credits apply.
 
