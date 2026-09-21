@@ -18,8 +18,6 @@ try:
     view = authorize_view()
     if view is None:
         st.stop()
-    if view != "Coordinator":
-        st.title("Mendigo")
     {"Customer": customer_view.render, "Coordinator": coordinator_view.render,
      "Technician": technician_view.render}[view](connection)
 finally:

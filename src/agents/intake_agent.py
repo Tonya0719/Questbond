@@ -15,7 +15,8 @@ class CustomerIntakeAgent(BaseAgent):
     system_prompt = INTAKE_PROMPT
 
     def run(self, session_id: str, request_id: str, customer_id: str, raw_message: str) -> dict:
-        if settings.llm_backend in {"bedrock", "local", "gateway"} and self.llm_client is not None:
+        if (settings.llm_backend in {"bedrock", "local", "gateway"}
+                and self.llm_client is not None and not isinstance(self.llm_client, MockAgentClient)):
             today = datetime.now(ZoneInfo("Asia/Singapore")).date().isoformat()
             prompt = (f"Today is {today}; timezone is Asia/Singapore. Use local ISO datetimes without timezone offsets. "
                       f"request_id={request_id}; customer_id={customer_id}; customer message={raw_message}. "

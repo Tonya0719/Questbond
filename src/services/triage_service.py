@@ -11,6 +11,9 @@ ISSUES = {
     "plumbing": r"\b(?:pipe|tap|toilet|drain|sink)\b",
     "air-conditioning": r"\b(?:aircon|air conditioner|air-conditioning|ac)\b",
     "electrical": r"\b(?:socket|power trip|light repair|sparking|sparks)\b",
+    "painting": r"\b(?:paint|painting|repaint|wall touch-up)\b",
+    "carpentry": r"\b(?:carpentry|door frame|door repair|cabinet)\b",
+    "masonry": r"\b(?:cement|masonry|wall crack|tile repair)\b",
 }
 
 

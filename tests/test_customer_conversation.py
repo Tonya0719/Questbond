@@ -28,7 +28,7 @@ def test_no_slot_then_customer_requests_another_window(db):
     assert db.execute('SELECT COUNT(*) FROM schedules').fetchone()[0] == 16
     public = '\n'.join(row[0] for row in db.execute('SELECT content FROM customer_messages'))
     assert 'No technician is free' in public
-    assert 'coordinator will confirm' in public
+    assert 'Confirmation is the next step' in public
     assert not any(term in public for term in ('Blair', 'workload', 'tiebreak', 'certification', 'Customer-provided booking details', 'T14:00'))
     assert db.execute('SELECT COUNT(*) FROM assignment_results WHERE request_id=?', (first.request_id,)).fetchone()[0] == 2
     confirm_recommendation(db, second.result['assignment']['assignment_id'], 'demo-coordinator')
@@ -46,11 +46,19 @@ def test_customer_screen_hides_internal_details_and_offers_new_window(db, monkey
     app.session_state['agent_session_id'] = response.session_id
     app.run()
     assert not app.exception
-    assert any(button.label == 'Check this time' for button in app.button)
+    assert any(button.label == 'Accept this time' for button in app.button)
+    assert any(button.label == 'Choose another time' for button in app.button)
     visible = '\n'.join(element.value for element in app.text)
     assert 'No technician is free' in visible
     assert 'workload' not in visible and 'Blair' not in visible
     assert not app.json
+    next(button for button in app.button if button.label == 'Accept this time').click().run()
+    assert not app.exception
+    assert db.execute('SELECT COUNT(*) FROM booking_confirmations WHERE request_id=?',
+                      (response.request_id,)).fetchone()[0] == 1
+    assert any('Your visit is confirmed' in element.value for element in app.success)
+    assert any('Your appointment with' in element.value and 'is confirmed' in element.value
+               for element in app.text)
     # Legacy conversations must also be projected safely, not shown as debug logs.
     db.execute('DELETE FROM customer_messages')
     db.commit()

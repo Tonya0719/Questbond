@@ -87,6 +87,35 @@ CREATE TABLE IF NOT EXISTS agent_model_calls (
  call_id TEXT PRIMARY KEY, session_id TEXT NOT NULL REFERENCES agent_sessions(session_id),
  agent_name TEXT NOT NULL, model_id TEXT, generation_id TEXT, input_tokens INTEGER, output_tokens INTEGER,
  cost_usd REAL, execution_status TEXT NOT NULL, duration_ms INTEGER NOT NULL, created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS operational_events (
+ event_id TEXT PRIMARY KEY, technician_id TEXT NOT NULL REFERENCES technicians(technician_id),
+ event_type TEXT NOT NULL, unavailable_from TEXT NOT NULL, unavailable_until TEXT NOT NULL,
+ reason TEXT NOT NULL, event_status TEXT NOT NULL, created_at TEXT NOT NULL,
+ UNIQUE(technician_id, event_type, unavailable_from, unavailable_until));
+CREATE TABLE IF NOT EXISTS reschedule_plans (
+ plan_id TEXT PRIMARY KEY, event_id TEXT NOT NULL REFERENCES operational_events(event_id),
+ plan_status TEXT NOT NULL, affected_job_count INTEGER NOT NULL, resolved_job_count INTEGER NOT NULL,
+ unresolved_job_count INTEGER NOT NULL, created_at TEXT NOT NULL, approved_by TEXT, approved_at TEXT);
+CREATE TABLE IF NOT EXISTS reschedule_actions (
+ action_id TEXT PRIMARY KEY, plan_id TEXT NOT NULL REFERENCES reschedule_plans(plan_id),
+ job_id TEXT NOT NULL REFERENCES jobs(job_id), previous_technician_id TEXT NOT NULL,
+ proposed_technician_id TEXT, previous_start TEXT NOT NULL, previous_end TEXT NOT NULL,
+ proposed_start TEXT, proposed_end TEXT, action_type TEXT NOT NULL, reason TEXT NOT NULL,
+ UNIQUE(plan_id, job_id));
+CREATE TABLE IF NOT EXISTS customer_notifications (
+ notification_id TEXT PRIMARY KEY, request_id TEXT REFERENCES customer_requests(request_id),
+ job_id TEXT NOT NULL REFERENCES jobs(job_id), notification_type TEXT NOT NULL,
+ recipient TEXT NOT NULL, subject TEXT NOT NULL, body TEXT NOT NULL,
+ delivery_status TEXT NOT NULL, created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS photo_assessments (
+ request_id TEXT PRIMARY KEY REFERENCES customer_requests(request_id), filename TEXT NOT NULL,
+ media_type TEXT NOT NULL, byte_size INTEGER NOT NULL, sha256 TEXT NOT NULL,
+ summary TEXT NOT NULL, suggested_service_rule_id TEXT, urgency TEXT NOT NULL,
+ safety_note TEXT NOT NULL, assessment_source TEXT NOT NULL, created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS demo_capacity_cases (
+ case_id TEXT PRIMARY KEY, work_date TEXT NOT NULL, service_rule_id TEXT NOT NULL REFERENCES service_rules(service_rule_id),
+ window_start TEXT NOT NULL, window_end TEXT NOT NULL, expected_result TEXT NOT NULL,
+ description TEXT NOT NULL, UNIQUE(service_rule_id, window_start, window_end));
 """
 
 

@@ -3,6 +3,7 @@ import json
 
 from ..config import settings
 from ..llm.bedrock_client import run_tool_loop
+from ..llm.mock_client import MockAgentClient
 from ..schemas.agent import AgentName
 from .base_agent import BaseAgent
 from .prompts import SCHEDULING_PROMPT
@@ -18,7 +19,8 @@ class SchedulingOperationsAgent(BaseAgent):
         if not status.get("ready_for_scheduling"):
             return {"status": "NEEDS_CLARIFICATION", "request_id": request_id,
                     "missing_fields": status.get("missing_fields", [])}
-        if settings.llm_backend in {"bedrock", "local", "gateway"} and self.llm_client is not None:
+        if (settings.llm_backend in {"bedrock", "local", "gateway"}
+                and self.llm_client is not None and not isinstance(self.llm_client, MockAgentClient)):
             prompt = f"Process ready request {request_id}. Use tools; do not select a technician yourself."
             text, _ = run_tool_loop(self.llm_client, self.executor, session_id, self.agent_name,
                                     [{"role": "user", "content": [{"text": prompt}]}],
