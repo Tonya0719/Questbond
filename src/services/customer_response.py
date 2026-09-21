@@ -37,5 +37,5 @@ def customer_response(connection, session_id):
     row = connection.execute('''SELECT a.*, t.name_alias FROM assignment_results a LEFT JOIN technicians t
         ON t.technician_id=a.technician_id WHERE a.request_id=? ORDER BY a.created_at DESC, a.rowid DESC LIMIT 1''', (session['request_id'],)).fetchone()
     if row and row['decision_status'] == 'ASSIGNED':
-        return f"We’ve proposed {row['name_alias']} for {visit_time(row['scheduled_start'], row['scheduled_end'])}. Your coordinator will confirm the visit."
+        return f"We’ve proposed {row['name_alias']} for {visit_time(row['scheduled_start'], row['scheduled_end'])}. Confirmation is the next step."
     return 'We’re checking your request.'

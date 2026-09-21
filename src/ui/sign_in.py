@@ -15,11 +15,11 @@ def staff_password(role):
 
 
 def authorize_view():
-    role = st.sidebar.selectbox('Sign in as', ['Customer', 'Technician', 'Coordinator'], key='sign_in_role')
+    role = st.sidebar.selectbox('Workspace', ['Customer', 'Technician', 'Coordinator'], key='sign_in_role')
     if st.session_state.get('staff_role') and st.session_state['staff_role'] != role:
         st.session_state.pop('staff_role', None)
     if role == 'Customer':
-        st.sidebar.caption('Resident requests are open. Staff screens require sign-in.')
+        st.sidebar.markdown('''<div class="permission-note"><strong>Customer access</strong><br>Book and track a visit without signing in. Staff workspaces are password protected.</div>''', unsafe_allow_html=True)
         return role
     if st.session_state.get('staff_role') == role:
         st.sidebar.success(f'Signed in as {role}')

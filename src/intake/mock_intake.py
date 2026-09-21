@@ -9,6 +9,9 @@ class MockIntake:
         "socket repair": "EL-REPAIR", "light repair": "EL-REPAIR", "power trip": "EL-TRIP",
         "minor installation": "EL-INSTALL",
         "pipe is leaking": "PL-LEAK", "tap is leaking": "PL-LEAK",
+        "wall painting": "PA-WALL", "paint the wall": "PA-WALL", "painting touch-up": "PA-TOUCH",
+        "door repair": "CA-DOOR", "door frame": "CA-DOOR", "cabinet repair": "CA-CABINET",
+        "wall crack": "MA-CRACK", "cement patch": "MA-CRACK", "tile repair": "MA-TILE",
     }
     ZONES = ("North", "South", "East", "West", "Central")
 

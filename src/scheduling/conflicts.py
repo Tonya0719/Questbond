@@ -8,6 +8,14 @@ def intervals_overlap(new_start: datetime, new_end: datetime, existing_start: da
 
 
 def has_schedule_conflict(connection, technician_id: str, start: datetime, end: datetime) -> bool:
+    unavailable = connection.execute(
+        """SELECT unavailable_from, unavailable_until FROM operational_events
+           WHERE technician_id=? AND event_status IN ('OPEN','RECOVERY_APPROVED')""",
+        (technician_id,),
+    ).fetchall()
+    if any(intervals_overlap(start, end, datetime.fromisoformat(row[0]), datetime.fromisoformat(row[1]))
+           for row in unavailable):
+        return True
     rows = connection.execute(
         """SELECT s.scheduled_start, s.scheduled_end FROM schedules s
            JOIN jobs j ON j.job_id=s.job_id

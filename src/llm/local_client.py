@@ -74,6 +74,7 @@ class LocalOpenAICompatibleClient:
         for message in messages:
             role, blocks = message["role"], message.get("content", [])
             texts = [block["text"] for block in blocks if "text" in block]
+            images = [block["image"] for block in blocks if "image" in block]
             tool_uses = [block["toolUse"] for block in blocks if "toolUse" in block]
             if role == "assistant" and tool_uses:
                 converted.append({"role": "assistant", "content": "\n".join(texts) or None,
@@ -89,7 +90,14 @@ class LocalOpenAICompatibleClient:
                     converted.append({"role": "tool", "tool_call_id": result["toolUseId"],
                                       "content": json.dumps(value) if not isinstance(value, str) else value})
                 continue
-            converted.append({"role": role, "content": "\n".join(texts)})
+            if images:
+                content = [{"type": "text", "text": value} for value in texts]
+                for item in images:
+                    content.append({"type": "image_url", "image_url": {
+                        "url": f"data:{item['media_type']};base64,{item['data']}", "detail": "high"}})
+                converted.append({"role": role, "content": content})
+            else:
+                converted.append({"role": role, "content": "\n".join(texts)})
         return converted
 
     @staticmethod
