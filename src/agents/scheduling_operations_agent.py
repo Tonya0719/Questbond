@@ -6,7 +6,7 @@ from ..llm.bedrock_client import run_tool_loop
 from ..llm.mock_client import MockAgentClient
 from ..schemas.agent import AgentName
 from .base_agent import BaseAgent
-from .prompts import SCHEDULING_PROMPT
+from .prompts import DISRUPTION_RECOVERY_PROMPT, SCHEDULING_PROMPT
 from ..services.decision_service import explain_decision
 
 
@@ -46,6 +46,46 @@ class SchedulingOperationsAgent(BaseAgent):
                                assignment_id=assignment["assignment_id"])
         return {"message": explain_decision(self.executor.connection, assignment, validation, trace), "assignment": assignment,
                 "validation": validation, "decision_trace": trace}
+
+    def run_disruption_recovery(self, session_id: str, event_id: str) -> dict:
+        """Coordinate a deterministic recovery proposal for a technician disruption.
+
+        The agent reads context, asks the deterministic engine to propose a recovery,
+        and reads the plan back for explanation. It never selects a technician/time and
+        never approves, rejects or applies the plan (those stay human-owned).
+        """
+        if (settings.llm_backend in {"bedrock", "local", "gateway"}
+                and self.llm_client is not None and not isinstance(self.llm_client, MockAgentClient)):
+            prompt = (f"A technician disruption occurred (event {event_id}). Use your tools to read the "
+                      f"context, propose a deterministic recovery, and explain the plan. Do not choose "
+                      f"replacements yourself and do not approve, reject or apply anything.")
+            text, _ = run_tool_loop(self.llm_client, self.executor, session_id, self.agent_name,
+                                    [{"role": "user", "content": [{"text": prompt}]}],
+                                    DISRUPTION_RECOVERY_PROMPT, self.tool_specs)
+            plan = self.call_tool(session_id, "get_recovery_plan", event_id=event_id)
+            return {"message": self._explain_recovery(plan), "model_explanation": text,
+                    "event_id": event_id, "plan": plan}
+        context = self.call_tool(session_id, "get_disruption_context", event_id=event_id)
+        self.call_tool(session_id, "propose_recovery", event_id=event_id)
+        plan = self.call_tool(session_id, "get_recovery_plan", event_id=event_id)
+        return {"message": self._explain_recovery(plan), "event_id": event_id,
+                "context": context, "plan": plan}
+
+    @staticmethod
+    def _explain_recovery(plan: dict) -> str:
+        summary = plan["plan"]
+        affected = summary["affected_job_count"]
+        resolved = summary["resolved_job_count"]
+        unresolved = summary["unresolved_job_count"]
+        if unresolved:
+            return (f"Recovery proposed for {affected} affected job(s): {resolved} resolved, "
+                    f"{unresolved} unresolved. The plan has unresolved jobs and requires human review; "
+                    f"it cannot be partially applied.")
+        if summary.get("requires_human_approval"):
+            return (f"Recovery proposed for {affected} affected job(s), all resolved. "
+                    f"Changes affect confirmed appointments and require coordinator approval.")
+        return (f"Recovery proposed for {affected} affected job(s), all resolved. "
+                f"No confirmed appointment changes require approval.")
 
     @staticmethod
     def _explain(assignment: dict, validation: dict) -> str:

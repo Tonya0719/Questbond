@@ -10,7 +10,13 @@ from ..services.decision_service import candidate_dispositions, explain_decision
 from ..services.triage_service import get_triage
 from ..llm.usage import request_usage
 from ..demo_scenarios import seed_future_workforce, seed_sick_leave_scenario
-from ..services.disruption_service import approve_plan, create_sick_leave_plan, get_plan
+from ..services.disruption_service import (
+    approve_plan,
+    create_sick_leave_plan,
+    get_plan,
+    recalculate_plan,
+    reject_plan,
+)
 
 
 def ticket_status(row):
@@ -117,53 +123,126 @@ def render_future_dataset(connection):
         st.info('Test flow: submit either case above → review the next available time → accept it or choose another time → the agent creates a recommendation for coordinator approval.')
 
 
+def _yes_no(flag):
+    return 'Yes' if flag else 'No'
+
+
 def render_disruption_recovery(connection):
-    with st.expander('Sick-leave recovery prototype', expanded=True):
-        st.caption('Load a repeatable synthetic case where Alex has three confirmed visits and then reports sick. No real email is sent.')
-        if st.button('Prepare and analyse sick-leave case', type='primary', key='prepare_sick_leave'):
-            try:
-                scenario = seed_sick_leave_scenario(connection)
-                recovery = create_sick_leave_plan(connection, scenario['technician_id'],
-                    scenario['unavailable_from'], scenario['unavailable_until'],
-                    'Sick leave reported before the first appointment')
-                st.session_state['recovery_plan_id'] = recovery['plan']['plan_id']
-                st.rerun()
-            except ValueError as error:
-                st.error(str(error))
-        plan_id = st.session_state.get('recovery_plan_id')
-        if not plan_id:
-            latest = connection.execute('SELECT plan_id FROM reschedule_plans ORDER BY created_at DESC, rowid DESC LIMIT 1').fetchone()
-            plan_id = latest['plan_id'] if latest else None
-        if not plan_id:
-            st.info('Prepare the case to create future bookings, report Alex sick and calculate replacements.')
+    with st.expander('Recovery Plans', expanded=True):
+        st.caption('Review and act on technician disruption recovery proposals (Unavailable or Delayed). '
+                   'The deterministic engine proposes changes; approval policy is shown below. No email is sent.')
+
+        # Demo / Developer tool: seed a repeatable synthetic sick-leave (UNAVAILABLE) case.
+        with st.expander('Demo / Developer tool — seed synthetic sick-leave case', expanded=False):
+            st.caption('Creates a repeatable case where Alex has three confirmed visits and then reports sick.')
+            if st.button('Prepare and analyse sick-leave case', type='primary', key='prepare_sick_leave'):
+                try:
+                    scenario = seed_sick_leave_scenario(connection)
+                    recovery = create_sick_leave_plan(connection, scenario['technician_id'],
+                        scenario['unavailable_from'], scenario['unavailable_until'],
+                        'Sick leave reported before the first appointment')
+                    st.session_state['recovery_plan_id'] = recovery['plan']['plan_id']
+                    st.rerun()
+                except ValueError as error:
+                    st.error(str(error))
+
+        # Choose among existing recovery plans (technician-reported or demo-seeded).
+        plans = connection.execute('''SELECT rp.plan_id, rp.plan_status, oe.event_type, oe.reason,
+            oe.unavailable_from, t.name_alias FROM reschedule_plans rp
+            JOIN operational_events oe ON oe.event_id=rp.event_id
+            JOIN technicians t ON t.technician_id=oe.technician_id
+            ORDER BY rp.created_at DESC, rp.rowid DESC''').fetchall()
+        if not plans:
+            st.info('No recovery plans yet. Technicians report disruptions from their workspace, '
+                    'or use the demo tool above.')
             return
+        labels = {f"{row['name_alias']} · {row['event_type']} · {row['plan_status']} "
+                  f"· {row['unavailable_from'][:16]} ({row['plan_id'][:12]})": row['plan_id'] for row in plans}
+        default_plan = st.session_state.get('recovery_plan_id')
+        default_label = next((label for label, pid in labels.items() if pid == default_plan), None)
+        chosen = st.selectbox('Recovery plan', list(labels.keys()),
+                              index=list(labels.keys()).index(default_label) if default_label else 0,
+                              key='recovery_plan_choice')
+        plan_id = labels[chosen]
+
         recovery = get_plan(connection, plan_id)
         plan = recovery['plan']
-        st.markdown(f"**{plan['name_alias']} unavailable:** {plan['unavailable_from']} to {plan['unavailable_until']}  \n**Reason:** {plan['reason']}")
-        affected, recovered, attention = st.columns(3)
+        st.markdown(f"**{plan['name_alias']} — {plan['event_type']}:** {plan['unavailable_from']} to "
+                    f"{plan['unavailable_until']}  \n**Reason:** {plan['reason']}")
+        affected, recovered, attention, approval = st.columns(4)
         affected.metric('Affected visits', plan['affected_job_count'])
         recovered.metric('Recovered', plan['resolved_job_count'])
         attention.metric('Need attention', plan['unresolved_job_count'])
+        approval.metric('Approval required', 'Yes' if plan.get('requires_human_approval') else 'No')
+
         rows = []
         for action in recovery['actions']:
             rows.append({
                 'Job': action['job_id'], 'Service': action['subtype'], 'Priority': action['priority'],
-                'Before': f"{action['previous_technician']} / {action['previous_start'][11:16]}–{action['previous_end'][11:16]}",
-                'Proposed': (f"{action['proposed_technician']} / {action['proposed_start'][11:16]}–{action['proposed_end'][11:16]}"
-                             if action['proposed_technician_id'] else 'Coordinator intervention'),
-                'Decision': action['action_type'].replace('_', ' ').title(), 'Reason': action['reason'],
+                'Before': f"{action['before_technician']} / {action['before_start'][11:16]}–{action['before_end'][11:16]}",
+                'Proposed After': (f"{action['after_technician']} / {action['after_start'][11:16]}–{action['after_end'][11:16]}"
+                                   if action['after_technician'] else 'Coordinator intervention'),
+                'Action': action['action_type'].replace('_', ' ').title(),
+                'Reason': action['reason'],
+                'Technician changed?': _yes_no(action['technician_changed']),
+                'Time changed?': _yes_no(action['time_changed']),
+                'Customer appointment changed?': _yes_no(action['customer_appointment_changed']),
+                'Approval required?': _yes_no(action['requires_human_approval']),
+                'Approval reasons': ', '.join(action['approval_reasons']) or '—',
             })
         st.dataframe(rows, width='stretch', hide_index=True)
+
+        if plan.get('has_unresolved'):
+            st.error('This plan has unresolved jobs. It cannot be partially applied and requires human review. '
+                     'Recalculate after changing operational state, or reject the plan.')
+
         if plan['plan_status'] == 'PROPOSED':
-            st.warning('Proposed only. Confirmed schedules have not changed and customers have not been contacted.')
-            if st.button('Approve recovery plan and prepare customer notices', key=f"approve_{plan_id}"):
+            if plan.get('requires_human_approval'):
+                st.warning('Proposed only. These changes affect confirmed appointments and require your approval. '
+                           'Confirmed schedules have not changed and customers have not been contacted.')
+            else:
+                st.info('Proposed. No confirmed appointment changes require approval, but nothing is applied '
+                        'until you approve.')
+            approve_col, reject_col, recalc_col = st.columns(3)
+            if approve_col.button('Approve', type='primary', key=f'approve_{plan_id}',
+                                  disabled=bool(plan.get('has_unresolved'))):
                 try:
                     approve_plan(connection, plan_id, 'demo-coordinator')
+                    st.session_state['recovery_plan_id'] = plan_id
                     st.rerun()
                 except ValueError as error:
                     st.error(str(error))
+            if reject_col.button('Reject', key=f'reject_{plan_id}'):
+                st.session_state[f'show_reject_{plan_id}'] = True
+                st.rerun()
+            if recalc_col.button('Recalculate', key=f'recalc_{plan_id}',
+                                 help='Rebuild the proposal from current operational state.'):
+                try:
+                    rebuilt = recalculate_plan(connection, plan_id)
+                    st.session_state['recovery_plan_id'] = rebuilt['plan']['plan_id']
+                    st.rerun()
+                except ValueError as error:
+                    st.error(str(error))
+            if st.session_state.get(f'show_reject_{plan_id}'):
+                with st.form(f'reject_form_{plan_id}'):
+                    note = st.text_input('Rejection reason (optional)')
+                    if st.form_submit_button('Confirm rejection'):
+                        try:
+                            reject_plan(connection, plan_id, 'demo-coordinator', note)
+                            st.session_state.pop(f'show_reject_{plan_id}', None)
+                            st.session_state['recovery_plan_id'] = plan_id
+                            st.rerun()
+                        except ValueError as error:
+                            st.error(str(error))
+        elif plan['plan_status'] == 'REJECTED':
+            st.info('This recovery plan was rejected. No schedule rows were changed. '
+                    'Recalculate to rebuild a proposal if operational state has changed.')
         else:
-            st.success(f"Recovery plan {plan['plan_status'].lower()}. Replacement schedules are active.")
+            any_change = any(a['technician_changed'] or a['time_changed'] for a in recovery['actions'])
+            if any_change:
+                st.success(f"Recovery plan {plan['plan_status'].lower()}. Replacement schedules are active.")
+            else:
+                st.success('Resolved automatically. No Coordinator approval was required.')
             notices = connection.execute('''SELECT cn.* FROM customer_notifications cn
                 JOIN reschedule_actions ra ON ra.job_id=cn.job_id WHERE ra.plan_id=?
                 ORDER BY cn.created_at, cn.job_id''', (plan_id,)).fetchall()

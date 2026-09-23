@@ -1,0 +1,10 @@
+service_rule_id,category,subtype,required_skills,required_certifications,default_duration_min,default_priority,required_customer_information
+AC-ROUTINE,Air-conditioning,Routine servicing,aircon_service,,60,NORMAL,zone|appointment_window
+AC-DIAG,Air-conditioning,Not cooling / diagnosis,aircon_diagnostics,REFRIGERANT,90,NORMAL,zone|appointment_window
+AC-LEAK,Air-conditioning,Water leakage / repair,aircon_repair,REFRIGERANT,90,HIGH,zone|appointment_window
+PL-LEAK,Plumbing,Pipe / tap leakage,plumbing_repair,,60,NORMAL,zone|appointment_window
+PL-BLOCK,Plumbing,Drain / toilet blockage,drain_service,,90,HIGH,zone|appointment_window
+PL-FIXTURE,Plumbing,Fixture replacement,plumbing_repair,,60,NORMAL,zone|appointment_window
+EL-REPAIR,Electrical,Light / switch / socket repair,electrical_repair,ELECTRICAL,60,NORMAL,zone|appointment_window
+EL-TRIP,Electrical,Power trip diagnosis,electrical_diagnostics,ELECTRICAL,90,HIGH,zone|appointment_window
+EL-INSTALL,Electrical,Minor installation / replacement,electrical_installation,ELECTRICAL,120,NORMAL,zone|appointment_window

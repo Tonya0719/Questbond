@@ -102,6 +102,10 @@ CREATE TABLE IF NOT EXISTS reschedule_actions (
  proposed_technician_id TEXT, previous_start TEXT NOT NULL, previous_end TEXT NOT NULL,
  proposed_start TEXT, proposed_end TEXT, action_type TEXT NOT NULL, reason TEXT NOT NULL,
  UNIQUE(plan_id, job_id));
+CREATE TABLE IF NOT EXISTS disruption_sessions (
+ session_id TEXT PRIMARY KEY REFERENCES agent_sessions(session_id),
+ event_id TEXT NOT NULL REFERENCES operational_events(event_id),
+ UNIQUE(event_id));
 CREATE TABLE IF NOT EXISTS customer_notifications (
  notification_id TEXT PRIMARY KEY, request_id TEXT REFERENCES customer_requests(request_id),
  job_id TEXT NOT NULL REFERENCES jobs(job_id), notification_type TEXT NOT NULL,

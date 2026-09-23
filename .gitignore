@@ -8,3 +8,7 @@ venv/
 .pytest_cache/
 .DS_Store
 data/runtime/technician_scheduling.db
+
+# Benchmark results ARE committed so the team can see them (results/system_benchmark/).
+# Temporary live-subset backup created during smoke testing
+evaluation/system_benchmark/live_subset.full.csv

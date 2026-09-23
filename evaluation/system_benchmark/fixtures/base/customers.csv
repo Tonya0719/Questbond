@@ -1,0 +1,25 @@
+customer_id,name_alias,customer_type,contact_channel,postal_sector,zone,preferred_time
+BC001,Bench Customer 1,RESIDENTIAL,WEB,52,East,09:00-12:00
+BC002,Bench Customer 2,RESIDENTIAL,PHONE,64,West,13:00-17:00
+BC003,Bench Customer 3,SME,EMAIL,18,Central,09:00-12:00
+BC004,Bench Customer 4,RESIDENTIAL,WEB,75,North,13:00-17:00
+BC005,Bench Customer 5,SME,PHONE,15,South,09:00-12:00
+BC006,Bench Customer 6,RESIDENTIAL,WEB,46,East,13:00-17:00
+BC007,Bench Customer 7,RESIDENTIAL,EMAIL,60,West,09:00-12:00
+BC008,Bench Customer 8,SME,WEB,23,Central,13:00-17:00
+BC009,Bench Customer 9,RESIDENTIAL,PHONE,73,North,09:00-12:00
+BC010,Bench Customer 10,RESIDENTIAL,WEB,09,South,13:00-17:00
+BC011,Bench Customer 11,SME,EMAIL,54,East,09:00-12:00
+BC012,Bench Customer 12,RESIDENTIAL,WEB,68,West,13:00-17:00
+BC013,Bench Customer 13,RESIDENTIAL,PHONE,31,Central,09:00-12:00
+BC014,Bench Customer 14,SME,EMAIL,42,North,13:00-17:00
+BC015,Bench Customer 15,RESIDENTIAL,WEB,88,South,09:00-12:00
+BC016,Bench Customer 16,RESIDENTIAL,WEB,12,East,13:00-17:00
+BC017,Bench Customer 17,SME,PHONE,27,West,09:00-12:00
+BC018,Bench Customer 18,RESIDENTIAL,EMAIL,39,Central,13:00-17:00
+BC019,Bench Customer 19,RESIDENTIAL,WEB,55,North,09:00-12:00
+BC020,Bench Customer 20,SME,WEB,61,South,13:00-17:00
+BC021,Bench Customer 21,RESIDENTIAL,PHONE,70,East,09:00-12:00
+BC022,Bench Customer 22,RESIDENTIAL,EMAIL,14,West,13:00-17:00
+BC023,Bench Customer 23,SME,WEB,48,Central,09:00-12:00
+BC024,Bench Customer 24,RESIDENTIAL,WEB,33,North,13:00-17:00

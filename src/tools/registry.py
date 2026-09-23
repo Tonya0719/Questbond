@@ -6,7 +6,7 @@ from typing import Any, Callable, Dict, Iterable, Optional, Type
 from pydantic import BaseModel, ConfigDict
 
 from ..schemas.agent import AgentName
-from . import intake_tools, scheduling_tools
+from . import disruption_tools, intake_tools, scheduling_tools
 
 
 class ToolInput(BaseModel):
@@ -37,6 +37,10 @@ class RequestIdInput(ToolInput):
 
 class AssignmentIdInput(ToolInput):
     assignment_id: str
+
+
+class EventIdInput(ToolInput):
+    event_id: str
 
 
 @dataclass(frozen=True)
@@ -71,6 +75,12 @@ def build_registry() -> Dict[str, ToolDefinition]:
                        scheduling_tools.validate_assignment_recommendation, frozenset({scheduling}), True),
         ToolDefinition("get_assignment_decision_trace", "Get selected and excluded candidate evidence.", AssignmentIdInput,
                        scheduling_tools.get_assignment_decision_trace, frozenset({scheduling}), True),
+        ToolDefinition("get_disruption_context", "Read a disruption event and its affected confirmed jobs.", EventIdInput,
+                       disruption_tools.get_disruption_context, frozenset({scheduling}), True),
+        ToolDefinition("propose_recovery", "Run the deterministic recovery engine for a disruption event.", EventIdInput,
+                       disruption_tools.propose_recovery, frozenset({scheduling}), False),
+        ToolDefinition("get_recovery_plan", "Get the recovery plan and its governance decision evidence.", EventIdInput,
+                       disruption_tools.get_recovery_plan, frozenset({scheduling}), True),
     ]
     return {definition.name: definition for definition in definitions}
 

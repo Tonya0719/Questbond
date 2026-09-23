@@ -41,6 +41,15 @@ class ToolExecutor:
                                                      (scoped["assignment_id"],)).fetchone()
                 if not assignment or assignment["request_id"] != session["request_id"]:
                     raise ToolExecutionError("The tool cannot access a different request's assignment")
+            # Disruption tools are event-scoped. This is an additional, orthogonal check that
+            # does not weaken the request/customer/assignment ownership checks above: the event
+            # must be mapped to the current session via disruption_sessions.
+            if "event_id" in scoped:
+                mapping = self.connection.execute(
+                    "SELECT 1 FROM disruption_sessions WHERE session_id=? AND event_id=?",
+                    (session_id, scoped["event_id"])).fetchone()
+                if not mapping:
+                    raise ToolExecutionError("The tool cannot access an event outside its session")
             cached = None
             if tool_name == "recommend_assignment":
                 cached = self.connection.execute("""SELECT output_json FROM agent_tool_calls

@@ -13,6 +13,7 @@ from .handoff import persist_handoff
 from .state_machine import ensure_transition
 from ..services.triage_service import get_triage
 from ..services.customer_response import customer_response, customer_text
+from ..services import disruption_service
 from ..llm.gateway_client import GatewayClient
 
 
@@ -65,6 +66,83 @@ class AgentOrchestrator:
             (session_id,)).fetchall()]
         combined = " ".join(replies or [raw])
         return self._process_intake(session_id, session["request_id"], session["customer_id"], combined)
+
+    def run_disruption_recovery(self, technician_id: str, unavailable_from: str, unavailable_until: str,
+                                event_type: str = "UNAVAILABLE", reason: str = "Technician unavailable") -> dict:
+        """Deterministically create a disruption event and route recovery to the Scheduling Agent.
+
+        The deterministic engine owns the recovery truth. A disruption with zero affected
+        jobs is recorded/closed without creating an unnecessary LLM session. Otherwise an
+        event-anchored Scheduling Operations Agent session is created (mapped via
+        disruption_sessions) and the agent coordinates the read/propose/explain tools.
+        Approval remains a human-owned action outside this flow.
+        """
+        # Deterministic first: create the event and recovery proposal (Checkpoint 1).
+        recovery = disruption_service.create_recovery_plan(
+            self.connection, technician_id, unavailable_from, unavailable_until,
+            event_type=event_type, reason=reason)
+        event_id = recovery['plan']['event_id']
+
+        # Zero affected jobs: no LLM session is needed.
+        if recovery['plan']['affected_job_count'] == 0:
+            return {"event_id": event_id, "session_id": None, "created_session": False,
+                    "message": "No confirmed jobs are affected by this disruption; nothing to recover.",
+                    "plan": recovery, "handoffs": []}
+
+        # Anchor the event session to a representative request from the affected jobs.
+        anchor = self._disruption_anchor(event_id, technician_id, unavailable_from, unavailable_until)
+        session_id = f"SES-{uuid4().hex[:12]}"
+        now = datetime.now(timezone.utc).isoformat()
+        self.connection.execute("INSERT INTO agent_sessions VALUES (?,?,?,?,?,?,?)",
+            (session_id, anchor['request_id'], anchor['customer_id'], AgentName.SCHEDULING.value,
+             WorkflowStatus.ASSIGNMENT_IN_PROGRESS.value, now, now))
+        self.connection.execute("INSERT INTO disruption_sessions VALUES (?,?)", (session_id, event_id))
+        self.connection.commit()
+
+        try:
+            scheduling = self.scheduling_agent.run_disruption_recovery(session_id, event_id)
+        except Exception as error:
+            self.connection.execute("UPDATE agent_sessions SET workflow_status=?, updated_at=? WHERE session_id=?",
+                (WorkflowStatus.ERROR.value, datetime.now(timezone.utc).isoformat(), session_id))
+            self.connection.commit()
+            raise
+
+        plan_summary = scheduling['plan']['plan']
+        needs_human = plan_summary.get('requires_human_approval') or plan_summary.get('has_unresolved')
+        final_status = (WorkflowStatus.HUMAN_REVIEW_REQUIRED if needs_human
+                        else WorkflowStatus.RECOMMENDATION_CREATED)
+        self.connection.execute("UPDATE agent_sessions SET workflow_status=?, updated_at=? WHERE session_id=?",
+            (final_status.value, datetime.now(timezone.utc).isoformat(), session_id))
+        self.connection.commit()
+        handoff = self._handoff(session_id, AgentName.SCHEDULING.value, "human_coordinator",
+            "DISRUPTION_RECOVERY_PROPOSED", anchor['request_id'],
+            payload={"message": scheduling['message'], "event_id": event_id},
+            evidence={"plan": plan_summary})
+        return {"event_id": event_id, "session_id": session_id, "created_session": True,
+                "workflow_status": final_status, "message": scheduling['message'],
+                "plan": scheduling['plan'], "handoffs": [handoff]}
+
+    def _disruption_anchor(self, event_id: str, technician_id: str,
+                           unavailable_from: str, unavailable_until: str) -> dict:
+        """Pick a deterministic representative request/customer for the event session.
+
+        Prefer a confirmed booking among the affected jobs; fall back to the job's
+        customer when a request is not linked. Selection order matches _affected_jobs.
+        """
+        row = self.connection.execute(
+            """SELECT bc.request_id, j.customer_id FROM schedules s
+               JOIN jobs j ON j.job_id=s.job_id
+               LEFT JOIN booking_confirmations bc ON bc.job_id=j.job_id
+               WHERE s.technician_id=? AND s.assignment_status IN ('ASSIGNED','CONFIRMED')
+                 AND j.status IN ('SCHEDULED','IN_PROGRESS')
+                 AND s.scheduled_start < ? AND s.scheduled_end > ?
+               ORDER BY CASE j.priority WHEN 'HIGH' THEN 0 ELSE 1 END, s.scheduled_start, s.job_id
+               LIMIT 1""",
+            (technician_id, unavailable_until, unavailable_from)).fetchone()
+        if not row or not row['request_id']:
+            # A confirmed booking should always carry a request_id; guard defensively.
+            raise ValueError("Affected jobs have no linked request to anchor the recovery session.")
+        return {'request_id': row['request_id'], 'customer_id': row['customer_id']}
 
     def _process_intake(self, session_id: str, request_id: str, customer_id: str,
                         raw_message: str) -> AgentResponse:

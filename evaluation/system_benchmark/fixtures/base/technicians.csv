@@ -1,0 +1,15 @@
+technician_id,name_alias,skills,certifications,shift_start,shift_end,status,current_zone,max_workload_min
+T001,Alex,aircon_service|aircon_diagnostics|aircon_repair,REFRIGERANT,08:00,17:00,AVAILABLE,East,420
+T002,Blair,aircon_service|aircon_repair,REFRIGERANT,09:00,18:00,AVAILABLE,West,420
+T003,Casey,aircon_service|aircon_diagnostics,,08:00,16:00,AVAILABLE,Central,360
+T004,Devon,plumbing_repair|drain_service,,08:00,17:00,AVAILABLE,North,420
+T005,Emery,plumbing_repair|drain_service,,09:00,18:00,AVAILABLE,South,420
+T006,Finley,electrical_repair|electrical_diagnostics|electrical_installation,ELECTRICAL,08:00,17:00,AVAILABLE,Central,420
+T007,Gray,electrical_repair|electrical_diagnostics|electrical_installation,ELECTRICAL,09:00,18:00,AVAILABLE,East,420
+T008,Harper,aircon_service|plumbing_repair|electrical_repair,ELECTRICAL,08:00,16:00,UNAVAILABLE,West,360
+T009,Indra,aircon_service|aircon_diagnostics|aircon_repair,REFRIGERANT,08:00,18:00,AVAILABLE,East,480
+T010,Jules,plumbing_repair|drain_service,,08:00,14:00,AVAILABLE,North,240
+T011,Kiran,aircon_repair|aircon_service,REFRIGERANT,10:00,18:00,AVAILABLE,Central,420
+T012,Lin,electrical_repair|electrical_diagnostics|electrical_installation,ELECTRICAL,08:00,17:00,AVAILABLE,South,420
+T013,Morgan,aircon_service,,08:00,17:00,AVAILABLE,West,300
+T014,Noor,plumbing_repair|drain_service|aircon_service,,09:00,18:00,AVAILABLE,East,420

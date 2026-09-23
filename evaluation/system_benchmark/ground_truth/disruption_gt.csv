@@ -1,0 +1,31 @@
+case_id,scenario_type,event_type,technician_id,param_from,param_until_or_delay,expected_affected_jobs,expected_changed_jobs,expected_unresolved_jobs,expected_requires_human_approval
+DSP001,unavailable_zero_affected,UNAVAILABLE,T013,2030-03-04T08:00,2030-03-04T12:00,[],[],[],false
+DSP002,unavailable_one_affected,UNAVAILABLE,T003,2030-03-04T12:30,2030-03-04T15:00,"[""JB003""]","[""JB003""]",[],true
+DSP003,unavailable_three_affected,UNAVAILABLE,T009,2030-03-04T08:00,2030-03-04T16:30,"[""JB001"", ""JB011"", ""JB018""]","[""JB001"", ""JB011"", ""JB018""]",[],true
+DSP004,unavailable_same_time_replacement,UNAVAILABLE,T003,2030-03-04T12:30,2030-03-04T15:00,"[""JB003""]","[""JB003""]",[],true
+DSP005,unavailable_shifted_replacement,UNAVAILABLE,T002,2030-03-04T08:30,2030-03-04T11:00,"[""JB002""]","[""JB002""]",[],true
+DSP006,unavailable_replacement_found,UNAVAILABLE,T006,2030-03-04T12:30,2030-03-04T15:00,"[""JB008""]","[""JB008""]",[],true
+DSP007,unavailable_skill_exclusion,UNAVAILABLE,T004,2030-03-04T07:30,2030-03-04T09:30,"[""JB004""]","[""JB004""]",[],true
+DSP008,unavailable_cert_partial_unresolved,UNAVAILABLE,T001,2030-03-04T12:30,2030-03-04T15:00,"[""JB010"", ""JB013""]","[""JB010""]","[""JB013""]",true
+DSP009,unavailable_conflict_exclusion,UNAVAILABLE,T005,2030-03-04T08:30,2030-03-04T11:00,"[""JB005""]","[""JB005""]",[],true
+DSP010,unavailable_workload_exclusion,UNAVAILABLE,T012,2030-03-04T08:30,2030-03-04T10:00,"[""JB009""]","[""JB009""]",[],true
+DSP011,unavailable_priority_ordering,UNAVAILABLE,T002,2030-03-04T08:30,2030-03-04T13:00,"[""JB002"", ""JB012""]","[""JB002"", ""JB012""]",[],true
+DSP012,unavailable_multi_customer,UNAVAILABLE,T004,2030-03-04T07:30,2030-03-04T16:00,"[""JB004"", ""JB006"", ""JB014"", ""JB019""]","[""JB004"", ""JB006"", ""JB014"", ""JB019""]",[],true
+DSP013,unavailable_stale_proposal,UNAVAILABLE,T007,2030-03-04T08:30,2030-03-04T10:30,"[""JB007""]","[""JB007""]",[],true
+DSP014,unavailable_idempotent,UNAVAILABLE,T001,2030-03-04T12:30,2030-03-04T15:00,"[""JB010"", ""JB013""]","[""JB010""]","[""JB013""]",true
+DSP015,unavailable_electrical_replacement,UNAVAILABLE,T006,2030-03-04T12:30,2030-03-04T15:00,"[""JB008""]","[""JB008""]",[],true
+DSP016,delayed_first_job_shift,DELAYED,T009,2030-03-04T08:00,30,"[""JB001""]","[""JB001""]",[],true
+DSP017,delayed_next_job_affected,DELAYED,T009,2030-03-04T09:30,30,"[""JB011""]","[""JB011""]",[],true
+DSP018,delayed_downstream_shift,DELAYED,T004,2030-03-04T08:00,90,"[""JB004""]","[""JB004""]",[],true
+DSP019,delayed_later_remains_feasible,DELAYED,T001,2030-03-04T14:00,30,"[""JB013""]","[""JB013""]",[],true
+DSP020,delayed_same_technician_shift,DELAYED,T009,2030-03-04T09:30,30,"[""JB011""]","[""JB011""]",[],true
+DSP021,delayed_replacement_or_shift,DELAYED,T003,2030-03-04T13:00,30,"[""JB003""]","[""JB003""]",[],true
+DSP022,delayed_electrical_shift,DELAYED,T006,2030-03-04T13:00,60,"[""JB008""]","[""JB008""]",[],true
+DSP023,delayed_customer_window_bound,DELAYED,T005,2030-03-04T11:00,30,"[""JB015""]","[""JB015""]",[],true
+DSP024,delayed_workload_limit,DELAYED,T012,2030-03-04T09:00,60,"[""JB009""]","[""JB009""]",[],true
+DSP025,delayed_first_job_minimum_change,DELAYED,T009,2030-03-04T08:00,30,"[""JB001""]","[""JB001""]",[],true
+DSP026,delayed_small_delay_no_impact,DELAYED,T007,2030-03-04T08:00,30,[],[],[],false
+DSP027,delayed_shift_within_window,DELAYED,T002,2030-03-04T09:00,30,"[""JB002""]","[""JB002""]",[],true
+DSP028,delayed_high_priority_first,DELAYED,T005,2030-03-04T09:00,30,"[""JB005""]","[""JB005""]",[],true
+DSP029,delayed_two_jobs,DELAYED,T009,2030-03-04T08:00,120,"[""JB001"", ""JB011""]","[""JB001"", ""JB011""]",[],true
+DSP030,delayed_idempotent,DELAYED,T009,2030-03-04T09:30,30,"[""JB011""]","[""JB011""]",[],true

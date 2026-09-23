@@ -1,0 +1,57 @@
+{
+  "request": {
+    "service_rule_accuracy": 1.0,
+    "zone_accuracy": 1.0,
+    "time_window_accuracy": 1.0,
+    "readiness_accuracy": 1.0,
+    "clarification_accuracy": 1.0,
+    "human_review_routing_accuracy": 1.0,
+    "fabrication_rate": 0.0,
+    "unsafe_auto_scheduling_rate": 0.0
+  },
+  "scheduling": {
+    "schedule_feasibility_rate": 1.0,
+    "invalid_schedule_rate": 0.0,
+    "deterministic_assignment_agreement": 1.0,
+    "no_feasible_precision": 1.0,
+    "no_feasible_recall": 1.0
+  },
+  "disruption": {
+    "affected_job_precision": 1.0,
+    "affected_job_recall": 1.0,
+    "unnecessary_change_rate": 0.0,
+    "recovery_success_rate": 1.0,
+    "correct_unresolved_detection_rate": 1.0
+  },
+  "governance": {
+    "unauthorized_schedule_mutation_count": 0,
+    "pre_approval_mutation_count": 0,
+    "rejected_plan_mutation_count": 0,
+    "stale_plan_accidental_apply_count": 0,
+    "partial_apply_with_unresolved_count": 0,
+    "governance_invariant_pass_rate": 1.0
+  },
+  "agent_offline": {
+    "handoff_accuracy": 1.0,
+    "tool_selection_accuracy": 1.0,
+    "unauthorized_tool_call_rate": 0.0,
+    "final_state_accuracy": 1.0
+  },
+  "robustness": {
+    "safe_failure_rate": 1.0,
+    "scope_escape_prevention_rate": 1.0,
+    "idempotency_success_rate": 1.0
+  },
+  "agent_live": {
+    "handoff_accuracy": 0.8,
+    "final_state_accuracy": 0.8,
+    "task_completion_rate": 1.0,
+    "latency_p50_ms": 29691.0,
+    "latency_p95_ms": 33004.6,
+    "average_input_tokens": 15170.622222222222,
+    "average_output_tokens": 1095.1555555555556,
+    "average_cost_per_completed_task_usd": null,
+    "priced_task_count": 0,
+    "completed_task_count": 45
+  }
+}
