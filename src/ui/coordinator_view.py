@@ -1,7 +1,9 @@
 import json
+import re
 from datetime import datetime
 import streamlit as st
 from .design import stage, stamp, text
+from ..services.customer_response import customer_text
 from ..services.booking_service import confirm_recommendation, notification_draft
 from ..services.technician_service import list_technicians
 from ..tools.scheduling_tools import get_assignment_decision_trace, validate_assignment_recommendation
@@ -17,6 +19,50 @@ from ..services.disruption_service import (
     recalculate_plan,
     reject_plan,
 )
+
+
+QUEUE_EXCERPT_CHARS = 60
+QUEUE_EMPTY_EXCERPT = 'No description provided'
+QUEUE_UNKNOWN_TICKET = 'Unknown ticket'
+QUEUE_NO_AREA = 'No unit or zone on file'
+QUEUE_ELLIPSIS = '…'
+_MARKDOWN_CHARS = r'\\`*_[]~$'
+_MARKDOWN_PATTERN = re.compile('([' + re.escape(_MARKDOWN_CHARS) + '])')
+
+
+def _field(row, key):
+    """Read a column from a sqlite3.Row or a plain dict; blank strings count as missing."""
+    try:
+        value = row[key]
+    except (KeyError, IndexError):
+        return None
+    return value.strip() or None if isinstance(value, str) else value
+
+
+def escape_markdown(value):
+    """Escape Markdown-significant characters so Streamlit labels stay literal."""
+    return _MARKDOWN_PATTERN.sub(r'\\\1', str(value))
+
+
+def queue_excerpt(message):
+    """Readable summary of a resident message: ISO stamps formatted, then truncated."""
+    if not message or not str(message).strip():
+        return QUEUE_EMPTY_EXCERPT
+    readable = ' '.join(customer_text(str(message)).split())
+    if len(readable) > QUEUE_EXCERPT_CHARS:
+        cut = readable[:QUEUE_EXCERPT_CHARS]
+        # Trim back to the last word boundary so a formatted timestamp is not split mid-word.
+        head, space, _tail = cut.rpartition(' ')
+        readable = (head if space else cut).rstrip(' ,;:.') + QUEUE_ELLIPSIS
+    return escape_markdown(readable)
+
+
+def queue_label(row):
+    """Card headline: resident name (falls back to ticket id) and service type (falls back to excerpt)."""
+    who = _field(row, 'name') or _field(row, 'request_id') or QUEUE_UNKNOWN_TICKET
+    subtype = _field(row, 'subtype')
+    what = escape_markdown(subtype) if subtype else queue_excerpt(_field(row, 'raw_message'))
+    return f'{escape_markdown(who)} — {what}'
 
 
 def ticket_status(row):
@@ -56,13 +102,21 @@ def render(connection):
             scope = st.selectbox('Show', ['All requests', 'Open requests', 'Booked'])
             visible = [row for row in requests if search.casefold() in ' '.join(str(row[key] or '') for key in ('request_id', 'name', 'apartment', 'raw_message')).casefold()
                        and (scope == 'All requests' or (scope == 'Booked') == bool(row['job_id']))]
-            with st.container(height=620, border=False, key='dispatch-queue'):
+            # No height argument: Streamlit injects an inline fixed height that would override the
+            # sticky column's calc-based max-height. Scrolling is handled entirely in design.py.
+            with st.container(border=False, key='dispatch-queue'):
                 for row in visible:
                     label, tone = ticket_status(row)
-                    if st.button(f"{row['name'] or row['request_id']} — {row['subtype'] or row['raw_message'][:55]}", key=f"ticket_{row['request_id']}", width='stretch', type='primary' if row['request_id'] == st.session_state['dispatch_request'] else 'secondary'):
-                        st.session_state['dispatch_request'] = row['request_id']
-                        st.rerun()
-                    st.markdown(f'<span class="dispatch-pill {tone}">{text(label)}</span> <span class="dispatch-muted">{text(row["apartment"] or row["zone"] or "Area not provided")}</span>', unsafe_allow_html=True)
+                    selected = row['request_id'] == st.session_state['dispatch_request']
+                    # 'ticket-card-sel-' contains 'ticket-card-', so one CSS selector styles every card
+                    # and a second, longer selector appends the selected state.
+                    card_key = f"ticket-card-{'sel-' if selected else ''}{row['request_id']}"
+                    with st.container(key=card_key):
+                        if st.button(queue_label(row), key=f"ticket_{row['request_id']}", width='stretch'):
+                            st.session_state['dispatch_request'] = row['request_id']
+                            st.rerun()
+                        where = _field(row, 'apartment') or _field(row, 'zone') or QUEUE_NO_AREA
+                        st.markdown(f'<span class="dispatch-meta"><span class="dispatch-pill {tone}">{text(label)}</span> <span class="dispatch-muted">{text(where)}</span></span>', unsafe_allow_html=True)
                 if not visible:
                     st.caption('No tickets match these filters.')
         with detail:

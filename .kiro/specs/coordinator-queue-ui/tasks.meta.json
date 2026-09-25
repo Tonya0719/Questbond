@@ -1,0 +1,148 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1. 实现队列标签组装的纯函数与单元测试": [
+      {
+        "executionId": "281f65e9-d55f-4f9e-97ae-8dd74e03327c",
+        "chatSessionId": "sess_732dc4b5-2511-4ecb-86bf-16a294003e1d",
+        "timestamp": 1790330152063
+      },
+      {
+        "executionId": "281f65e9-d55f-4f9e-97ae-8dd74e03327c",
+        "chatSessionId": "sess_732dc4b5-2511-4ecb-86bf-16a294003e1d",
+        "timestamp": 1790330174607
+      },
+      {
+        "executionId": "281f65e9-d55f-4f9e-97ae-8dd74e03327c",
+        "chatSessionId": "sess_732dc4b5-2511-4ecb-86bf-16a294003e1d",
+        "timestamp": 1790330480823
+      }
+    ],
+    "2.1 改造队列渲染循环的结构": [
+      {
+        "executionId": "281f65e9-d55f-4f9e-97ae-8dd74e03327c",
+        "chatSessionId": "sess_732dc4b5-2511-4ecb-86bf-16a294003e1d",
+        "timestamp": 1790330152248
+      },
+      {
+        "executionId": "281f65e9-d55f-4f9e-97ae-8dd74e03327c",
+        "chatSessionId": "sess_732dc4b5-2511-4ecb-86bf-16a294003e1d",
+        "timestamp": 1790330490706
+      },
+      {
+        "executionId": "281f65e9-d55f-4f9e-97ae-8dd74e03327c",
+        "chatSessionId": "sess_732dc4b5-2511-4ecb-86bf-16a294003e1d",
+        "timestamp": 1790330638079
+      }
+    ],
+    "2.2 实现卡片与行高的 CSS": [
+      {
+        "executionId": "281f65e9-d55f-4f9e-97ae-8dd74e03327c",
+        "chatSessionId": "sess_732dc4b5-2511-4ecb-86bf-16a294003e1d",
+        "timestamp": 1790330152417
+      },
+      {
+        "executionId": "281f65e9-d55f-4f9e-97ae-8dd74e03327c",
+        "chatSessionId": "sess_732dc4b5-2511-4ecb-86bf-16a294003e1d",
+        "timestamp": 1790330645309
+      },
+      {
+        "executionId": "281f65e9-d55f-4f9e-97ae-8dd74e03327c",
+        "chatSessionId": "sess_732dc4b5-2511-4ecb-86bf-16a294003e1d",
+        "timestamp": 1790330818314
+      }
+    ],
+    "3. 实现主从布局的粘性定位与动态高度": [
+      {
+        "executionId": "281f65e9-d55f-4f9e-97ae-8dd74e03327c",
+        "chatSessionId": "sess_732dc4b5-2511-4ecb-86bf-16a294003e1d",
+        "timestamp": 1790330152513
+      },
+      {
+        "executionId": "281f65e9-d55f-4f9e-97ae-8dd74e03327c",
+        "chatSessionId": "sess_732dc4b5-2511-4ecb-86bf-16a294003e1d",
+        "timestamp": 1790330828340
+      },
+      {
+        "executionId": "281f65e9-d55f-4f9e-97ae-8dd74e03327c",
+        "chatSessionId": "sess_732dc4b5-2511-4ecb-86bf-16a294003e1d",
+        "timestamp": 1790332956383
+      }
+    ],
+    "4. 更新响应式规则并解除结构耦合": [
+      {
+        "executionId": "281f65e9-d55f-4f9e-97ae-8dd74e03327c",
+        "chatSessionId": "sess_732dc4b5-2511-4ecb-86bf-16a294003e1d",
+        "timestamp": 1790330152624
+      },
+      {
+        "executionId": "281f65e9-d55f-4f9e-97ae-8dd74e03327c",
+        "chatSessionId": "sess_732dc4b5-2511-4ecb-86bf-16a294003e1d",
+        "timestamp": 1790332963830
+      },
+      {
+        "executionId": "281f65e9-d55f-4f9e-97ae-8dd74e03327c",
+        "chatSessionId": "sess_732dc4b5-2511-4ecb-86bf-16a294003e1d",
+        "timestamp": 1790333312899
+      }
+    ],
+    "5. 统一右侧详情区的排版节奏": [
+      {
+        "executionId": "281f65e9-d55f-4f9e-97ae-8dd74e03327c",
+        "chatSessionId": "sess_732dc4b5-2511-4ecb-86bf-16a294003e1d",
+        "timestamp": 1790330152683
+      },
+      {
+        "executionId": "281f65e9-d55f-4f9e-97ae-8dd74e03327c",
+        "chatSessionId": "sess_732dc4b5-2511-4ecb-86bf-16a294003e1d",
+        "timestamp": 1790333321135
+      },
+      {
+        "executionId": "281f65e9-d55f-4f9e-97ae-8dd74e03327c",
+        "chatSessionId": "sess_732dc4b5-2511-4ecb-86bf-16a294003e1d",
+        "timestamp": 1790333551789
+      }
+    ],
+    "6. 扩展协调员界面的自动化测试": [
+      {
+        "executionId": "281f65e9-d55f-4f9e-97ae-8dd74e03327c",
+        "chatSessionId": "sess_732dc4b5-2511-4ecb-86bf-16a294003e1d",
+        "timestamp": 1790330152773
+      },
+      {
+        "executionId": "281f65e9-d55f-4f9e-97ae-8dd74e03327c",
+        "chatSessionId": "sess_732dc4b5-2511-4ecb-86bf-16a294003e1d",
+        "timestamp": 1790333559371
+      },
+      {
+        "executionId": "281f65e9-d55f-4f9e-97ae-8dd74e03327c",
+        "chatSessionId": "sess_732dc4b5-2511-4ecb-86bf-16a294003e1d",
+        "timestamp": 1790333933151
+      }
+    ],
+    "7. 运行完整回归并确认无行为变更": [
+      {
+        "executionId": "281f65e9-d55f-4f9e-97ae-8dd74e03327c",
+        "chatSessionId": "sess_732dc4b5-2511-4ecb-86bf-16a294003e1d",
+        "timestamp": 1790330152870
+      },
+      {
+        "executionId": "281f65e9-d55f-4f9e-97ae-8dd74e03327c",
+        "chatSessionId": "sess_732dc4b5-2511-4ecb-86bf-16a294003e1d",
+        "timestamp": 1790333941921
+      },
+      {
+        "executionId": "281f65e9-d55f-4f9e-97ae-8dd74e03327c",
+        "chatSessionId": "sess_732dc4b5-2511-4ecb-86bf-16a294003e1d",
+        "timestamp": 1790335021678
+      }
+    ],
+    "2. 将队列条目重构为单一卡片容器": [
+      {
+        "executionId": "281f65e9-d55f-4f9e-97ae-8dd74e03327c",
+        "chatSessionId": "sess_732dc4b5-2511-4ecb-86bf-16a294003e1d",
+        "timestamp": 1790330818408
+      }
+    ]
+  }
+}

@@ -24,6 +24,9 @@ def apply_theme():
     system = f'@media(prefers-color-scheme:dark){{:root{{{dark}}}}}' if choice == 'System' else ''
     st.markdown('<style>@import url("https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL@20,400,0&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400&display=swap");'
         + ':root{' + variables + '}' + system + '''
+        /* Theme-independent layout metrics. --queue-top is the app header height plus the block
+           container top padding; --stage-gap is the vertical rhythm above every detail stage heading. */
+        :root{--queue-top:5.25rem;--stage-gap:24px}
         *{box-sizing:border-box}.stApp,[data-testid="stHeader"]{color:var(--ink)}
         [data-testid="stHeader"]{background:var(--header);backdrop-filter:blur(14px);border-bottom:1px solid color-mix(in srgb,var(--line) 60%,transparent)}
         .stApp{font-family:'Plus Jakarta Sans',sans-serif;background-color:var(--canvas);background-image:radial-gradient(circle at 7% 5%,var(--glow1) 0,transparent 30rem),radial-gradient(circle at 96% 24%,var(--glow2) 0,transparent 28rem),radial-gradient(circle at 68% 92%,var(--glow3) 0,transparent 30rem),linear-gradient(135deg,color-mix(in srgb,var(--canvas) 96%,#fff) 0%,color-mix(in srgb,var(--canvas) 91%,#EEF2FF) 48%,color-mix(in srgb,var(--canvas) 93%,#ECFDF5) 100%);background-attachment:fixed}
@@ -38,26 +41,35 @@ def apply_theme():
         .block-container{padding:4.75rem 2rem 4rem;max-width:1600px}
         .dispatch-top{display:flex;align-items:baseline;gap:24px;border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:20px;flex-wrap:wrap}
         .dispatch-brand{font-size:30px;font-weight:800}.dispatch-muted{color:var(--dim)}
-        .dispatch-stage{font-weight:700;font-size:20px!important;display:flex;gap:12px;align-items:center;margin:24px 0 12px}
+        .dispatch-stage{font-weight:700;font-size:20px!important;display:flex;gap:12px;align-items:center;margin:var(--stage-gap) 0 12px}
         .dispatch-stage>span{color:var(--primary);font-size:14px;border:1px solid color-mix(in srgb,var(--primary) 30%,transparent);background:color-mix(in srgb,var(--primary) 10%,transparent);padding:5px 10px;border-radius:999px}
         .dispatch-request,.dispatch-stamp{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;margin:12px 0;white-space:pre-wrap;box-shadow:var(--shadow)}
         .dispatch-request p,.dispatch-stamp p,.dispatch-explanation{max-width:64ch;line-height:1.65}
         .dispatch-stamp{border-left:5px solid var(--amber)}.dispatch-stamp strong{font-size:20px;color:var(--amber)}
         .dispatch-stamp.resolved{border-color:var(--teal)}.dispatch-stamp.resolved strong{color:var(--teal)}
         .dispatch-stamp.conflict{border-color:var(--red)}.dispatch-stamp.conflict strong{color:var(--red)}
-        .dispatch-fields{display:grid;grid-template-columns:150px 1fr;gap:10px 20px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:var(--shadow)}
+        /* Same 12px block margin as .dispatch-request and .dispatch-stamp so every card-like element
+           inside a stage shares one rhythm and the gap before the next stage heading stays constant. */
+        .dispatch-fields{display:grid;grid-template-columns:150px 1fr;gap:10px 20px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;margin:12px 0;box-shadow:var(--shadow)}
         .dispatch-fields dt{color:var(--dim)}.dispatch-fields dd{margin:0;overflow-wrap:anywhere}
         .dispatch-table{width:100%;border-collapse:collapse;background:var(--surface);font-size:14px}
         .dispatch-table td,.dispatch-table th{text-align:left;padding:12px;border-bottom:1px solid var(--line);vertical-align:top}
         .dispatch-table th{color:var(--dim);font-weight:500}.dispatch-scroll{overflow-x:auto}
         .dispatch-pill{display:inline-block;border:1px solid currentColor;padding:4px 9px;font-size:12px;border-radius:999px;white-space:nowrap}
         .pending{color:var(--amber)}.resolved{color:var(--teal)}.conflict{color:var(--red)}
-        .dispatch-log{background:var(--surface2);padding:16px;border-left:3px solid var(--line);font-family:'IBM Plex Mono',monospace;font-size:12px;white-space:pre-wrap;overflow-wrap:anywhere}
+        .dispatch-log{background:var(--surface2);padding:16px;border-left:3px solid var(--line);font-family:'IBM Plex Mono',monospace;font-size:12px;white-space:pre-wrap;overflow-wrap:anywhere;overflow-x:auto}
         .dispatch-detail{animation:dispatch-enter .22s ease-out}@keyframes dispatch-enter{from{opacity:.5;transform:translateY(5px)}to{opacity:1;transform:none}}
         .stButton button,.stDownloadButton button,.stFormSubmitButton button{min-height:46px;background:var(--surface);color:var(--ink);border:1.5px solid var(--line);border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.03);font-weight:600;transition:all 150ms ease}
         .stButton button:hover,.stDownloadButton button:hover{border-color:var(--primary);color:var(--primary);transform:translateY(-1px);box-shadow:0 8px 18px rgba(99,102,241,.12)}
         button[kind="primary"],.stFormSubmitButton button[kind="primary"]{background:linear-gradient(135deg,var(--primary),var(--primary2))!important;color:white!important;border:none!important;box-shadow:0 10px 20px rgba(99,102,241,.24)!important;justify-content:center}
         button[kind="primary"]:hover{filter:brightness(1.05);transform:translateY(-1px);box-shadow:0 14px 26px rgba(99,102,241,.3)!important}
+        [class*="st-key-ticket-card-"]{border:1.5px solid var(--line);border-radius:14px;background:var(--surface);padding:10px 12px;margin-bottom:8px;min-height:92px;display:flex;flex-direction:column;gap:6px;justify-content:center;box-shadow:0 1px 2px rgba(0,0,0,.03);transition:all 150ms ease}
+        [class*="st-key-ticket-card-"]:hover{border-color:var(--primary);transform:translateY(-1px);box-shadow:0 8px 18px rgba(99,102,241,.12)}
+        [class*="st-key-ticket-card-"] .stButton button{min-height:0;padding:0;border:none;background:transparent;box-shadow:none;text-align:left;justify-content:flex-start;font-weight:700}
+        [class*="st-key-ticket-card-"] .stButton button:hover{transform:none;box-shadow:none;color:var(--primary)}
+        [class*="st-key-ticket-card-"] .stButton button p{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.4;margin:0;text-align:left}
+        [class*="st-key-ticket-card-sel-"]{border-color:var(--primary);border-left-width:5px;background:color-mix(in srgb,var(--primary) 7%,var(--surface))}
+        .dispatch-meta{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
         [data-baseweb="input"],[data-baseweb="textarea"],[data-baseweb="select"]>div{min-height:48px;background:var(--surface2)!important;color:var(--ink)!important;border:1.5px solid var(--line)!important;border-radius:12px!important;transition:all 150ms ease;box-shadow:none!important}
         [data-baseweb="input"] input,textarea{background:transparent!important;color:var(--ink)!important}
         [data-baseweb="input"]:focus-within,[data-baseweb="textarea"]:focus-within,[data-baseweb="select"]>div:focus-within{background:var(--surface)!important;border-color:var(--primary)!important;box-shadow:0 0 0 3px rgba(99,102,241,.15)!important}
@@ -82,10 +94,40 @@ def apply_theme():
         .permission-note{margin-top:12px;padding:11px 12px;border-radius:12px;background:color-mix(in srgb,var(--primary) 7%,var(--surface));border:1px solid color-mix(in srgb,var(--primary) 18%,var(--line));font-size:12px;color:var(--dim)!important;line-height:1.5}
         .permission-note strong{color:var(--ink)!important}
         @media(min-width:901px){[data-testid="stSidebar"]{width:310px!important;min-width:310px!important;max-width:310px!important}[data-testid="stSidebar"]>div:first-child{width:310px!important}}
+        /* Top alignment of the master-detail columns: the queue starts with a subheader and the detail
+           column with a caption, two blocks whose default top spacing differs. Zeroing the leading
+           space on whichever element each column opens with lines both columns up without depending on
+           what that element is. Padding is cleared too because Streamlit spaces headings with padding. */
+        .st-key-dispatch-layout [data-testid="stColumn"]>[data-testid="stVerticalBlock"]>*:first-child{margin-top:0}
+        .st-key-dispatch-layout [data-testid="stColumn"]>[data-testid="stVerticalBlock"]>*:first-child :is(h1,h2,h3,h4,h5,h6,p){margin-top:0;padding-top:0}
         @media(min-width:701px){.st-key-dispatch-layout [data-testid="stHorizontalBlock"]{flex-wrap:nowrap!important}.st-key-dispatch-layout [data-testid="stColumn"]{min-width:0!important}.st-key-dispatch-layout [data-testid="stColumn"]:first-child{flex:0 0 260px!important}.st-key-dispatch-layout [data-testid="stColumn"]:last-child{flex:1 1 0!important}}
+        /* Desktop master-detail: the queue column sticks under the header and sizes itself from the
+           viewport. max-height (never height) keeps a short queue at its content height, and height:auto
+           overrides the height:100% Streamlit puts on a column's inner block so the sticky element stays
+           shorter than the column it travels inside. Streamlit wraps each container block in a
+           stLayoutWrapper flex item, so the grow/min-height pair is applied to that wrapper as well as
+           to the queue itself; the filter controls keep flex:0 0 auto so only the list scrolls.
+           Known risk: any ancestor carrying overflow:hidden kills sticky silently. Checked against
+           Streamlit 1.63.0 - no ancestor between this block and the page scroller sets it, so the
+           documented fallback (drop sticky, keep only max-height and inner scroll) stays unused. If a
+           later release introduces such an ancestor, sticky degrades on its own and the
+           viewport-derived max-height plus inner scroll still keep the two columns in step. */
+        @media(min-width:701px){.st-key-dispatch-layout [data-testid="stColumn"]:first-child>[data-testid="stVerticalBlock"]{position:sticky;top:var(--queue-top);height:auto;max-height:calc(100vh - var(--queue-top) - 1rem);display:flex;flex-direction:column;min-height:0}
+        .st-key-dispatch-layout [data-testid="stColumn"]:first-child>[data-testid="stVerticalBlock"]>*{flex:0 0 auto}
+        .st-key-dispatch-layout [data-testid="stColumn"]:first-child>[data-testid="stVerticalBlock"]>[data-testid="stLayoutWrapper"]:has(>.st-key-dispatch-queue){flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+        .st-key-dispatch-queue{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden}}
         @media(min-width:1200px){.st-key-dispatch-layout [data-testid="stColumn"]:first-child{flex-basis:300px!important}}
         @media(max-width:700px){.dispatch-fields{grid-template-columns:110px 1fr}.block-container{padding:4.4rem .85rem 3rem}.dispatch-top{gap:10px}.customer-hero{text-align:left}.customer-hero h1{font-size:31px}.service-chips{justify-content:flex-start}div[data-testid="stForm"]{padding:22px 17px;border-radius:19px}
-        .st-key-dispatch-queue{height:150px!important;overflow-x:auto!important}
-        .st-key-dispatch-queue [data-testid="stVerticalBlock"]{display:grid;grid-auto-flow:column;grid-template-rows:70px 40px;grid-auto-columns:240px;gap:8px}}
+        /* Mobile queue: the list turns into a horizontal card rail. Only the queue block itself is
+           turned into a row flex container and its direct children get a fixed track width, so the
+           layout depends on neither the number of sub-blocks per ticket nor any hard-coded sub-block
+           height. Streamlit wraps every card container in a stLayoutWrapper flex item, hence the
+           track width is declared on the wrapper and on the card. Sticky is dropped to static here so
+           the queue cannot cover the detail column on narrow screens. Card transitions are disabled
+           by the global prefers-reduced-motion rule below, which targets * and needs no repetition. */
+        .st-key-dispatch-layout [data-testid="stColumn"]:first-child>[data-testid="stVerticalBlock"]{position:static;max-height:none}
+        .st-key-dispatch-queue{max-height:none;flex-direction:row;flex-wrap:nowrap;gap:8px;overflow-x:auto;overflow-y:hidden}
+        .st-key-dispatch-queue>[data-testid="stLayoutWrapper"]{flex:0 0 240px;min-width:0}
+        [class*="st-key-ticket-card-"]{flex:0 0 240px;margin-bottom:0}}
         @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
         </style>''', unsafe_allow_html=True)
