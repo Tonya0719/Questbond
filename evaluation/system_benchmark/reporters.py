@@ -38,13 +38,19 @@ def write_summary(summary: dict) -> None:
     path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
 
 
-def merge_summary(new_section: dict) -> None:
-    """Merge live metrics into the existing summary without discarding offline metrics."""
+def merge_summary(new_sections: dict) -> None:
+    """Update only the given summary sections, leaving every other section intact.
+
+    Used by both offline and live runs so neither mode discards the other's
+    metrics. Creates the summary file (and its directory) on first run.
+    """
     path = config.RESULTS_DIR / config.RESULT_FILES["summary"]
+    path.parent.mkdir(parents=True, exist_ok=True)
     existing = {}
     if path.exists():
-        existing = json.loads(path.read_text(encoding="utf-8"))
-    existing.update(new_section)
+        # utf-8-sig tolerates a BOM left by an external editor; plain UTF-8 reads fine too.
+        existing = json.loads(path.read_text(encoding="utf-8-sig"))
+    existing.update(new_sections)
     path.write_text(json.dumps(existing, indent=2), encoding="utf-8")
 
 
@@ -85,7 +91,12 @@ def write_report(summary: dict, all_rows: dict[str, list[dict]], mode: str) -> N
         f"- Benchmark version: {BENCHMARK_VERSION}",
         f"- Date: {date.today().isoformat()}",
         f"- Mode: {mode}",
-        f"- Backend: mock (offline deterministic)" if mode == "offline" else f"- Mode: {mode}",
+        "- Backend: mock (offline deterministic)" if mode == "offline"
+        else f"- Backend: live ({mode})",
+        "",
+        "> This report covers the offline deterministic run only. Live Agent results "
+        "(latency, tokens, cost) live in separate artifacts and are not reflected here."
+        if mode == "offline" else "",
         "",
         "## Case counts",
         "",
@@ -121,7 +132,10 @@ def write_report(summary: dict, all_rows: dict[str, list[dict]], mode: str) -> N
     lines.extend([
         "- Offline/mock results measure deterministic correctness and safety, not live Agent language quality.",
         "- Deterministic scheduling/recovery metrics are produced by Python, not the LLM.",
-        "- Live latency/tokens/cost are collected only in `--mode live` (separate artifacts).",
+        "- Live latency/tokens/cost are collected only in `--mode live`, and are written to "
+        "separate artifacts (`agent_live_results.csv`, `agent_live` summary section). "
+        "Offline agent results are written to `agent_offline_results.csv` and never "
+        "overwrite live artifacts.",
         "- Multimodal visual accuracy is a separate evaluation track and is not included here.",
     ])
     lines.append("")

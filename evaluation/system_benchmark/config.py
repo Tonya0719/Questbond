@@ -59,6 +59,9 @@ RESULT_FILES = {
     "scheduling": "scheduling_results.csv",
     "disruption": "disruption_results.csv",
     "governance": "governance_results.csv",
+    # Offline (mock) and live (paid) agent artifacts must never share a slot:
+    # an offline run must not be able to overwrite paid live results.
+    "agent_offline": "agent_offline_results.csv",
     "agent_live": "agent_live_results.csv",
     "robustness": "robustness_results.csv",
     "summary": "summary_metrics.json",

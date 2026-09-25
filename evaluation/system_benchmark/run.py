@@ -144,9 +144,12 @@ def offline() -> int:
     reporters.write_suite_results("disruption", disruption_rows)
     reporters.write_suite_results("governance", governance_rows)
     reporters.write_suite_results("robustness", robustness_rows)
-    # Offline agent results share the agent_live file name slot but are labelled backend=mock.
-    reporters.write_suite_results("agent_live", agent_rows)
-    reporters.write_summary(summary)
+    # Offline artifacts stay strictly separate from live artifacts: an offline (mock)
+    # run must NEVER write the agent_live slot, which holds paid live-run results.
+    reporters.write_suite_results("agent_offline", agent_rows)
+    # Merge instead of overwrite, so an offline run only refreshes its own sections
+    # and leaves the `agent_live` section written by a live run intact.
+    reporters.merge_summary(summary)
     reporters.write_report(summary, all_rows, mode="offline")
     reporters.print_offline_summary(summary, all_rows)
 
