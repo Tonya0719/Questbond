@@ -28,12 +28,18 @@ def customer_response(connection, session_id):
         missing = json.loads(row[0]) if row else []
         questions = []
         if any(field in missing for field in ('service_rule_id', 'category', 'subtype', 'structured_request')):
-            questions.append('what needs fixing')
+            questions.append('what needs fixing — for example: the aircon is leaking, '
+                             'a pipe is leaking, the toilet is blocked, or a socket needs repair')
         if 'zone' in missing:
-            questions.append('which area your apartment is in')
+            questions.append('which area your apartment is in — East, West, North, South or Central')
         if any(field in missing for field in ('window_start', 'window_end')):
-            questions.append('which date and time window works for you')
-        return 'Could you tell us ' + ' and '.join(questions or ['the missing details for your visit']) + '?'
+            questions.append('which date and time window works for you — '
+                             'for example: 15 March, 10:00 AM to 1:00 PM')
+        if not questions:
+            return 'Could you tell us the missing details for your visit?'
+        if len(questions) == 1:
+            return f'Could you tell us {questions[0]}?'
+        return 'Could you tell us ' + '; '.join(questions[:-1]) + '; and ' + questions[-1] + '?'
     row = connection.execute('''SELECT a.*, t.name_alias FROM assignment_results a LEFT JOIN technicians t
         ON t.technician_id=a.technician_id WHERE a.request_id=? ORDER BY a.created_at DESC, a.rowid DESC LIMIT 1''', (session['request_id'],)).fetchone()
     if row and row['decision_status'] == 'ASSIGNED':

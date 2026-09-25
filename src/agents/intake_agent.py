@@ -34,8 +34,15 @@ class CustomerIntakeAgent(BaseAgent):
         matches = self.call_tool(session_id, "lookup_service_rules", query=raw_message)["matches"]
         extracted = client.extract_request(raw_message)
         service_rule_id = extracted.get("service_rule_id")
-        if not service_rule_id and len(matches) == 1:
-            service_rule_id = matches[0]["service_rule_id"]
+        # Only adopt a lookup match when it is a STRONG, unambiguous hit. A single loose
+        # keyword match (e.g. "water" -> AC-LEAK, score 1) is treated as ambiguous so the
+        # agent asks for clarification instead of guessing a service.
+        if not service_rule_id and matches:
+            top = matches[0]
+            strong = top["score"] >= 2
+            unambiguous = len(matches) == 1 or top["score"] > matches[1]["score"]
+            if strong and unambiguous:
+                service_rule_id = top["service_rule_id"]
         zone = extracted.get("zone") or context.get("zone")
         request = self.call_tool(session_id, "save_structured_request", request_id=request_id,
             customer_id=customer_id if context.get("found") else None, service_rule_id=service_rule_id,
@@ -44,8 +51,27 @@ class CustomerIntakeAgent(BaseAgent):
         if request["ready_for_scheduling"]:
             message = "Request information is complete and ready for scheduling."
         else:
-            labels = {"service_rule_id": "the type of repair", "zone": "your area",
-                      "window_start": "your available start time", "window_end": "your available end time",
-                      "estimated_duration_min": "a supported service type"}
-            message = "Could you provide " + ", ".join(dict.fromkeys(labels.get(field, field) for field in request["missing_fields"])) + "?"
+            message = self._clarification_message(request["missing_fields"])
         return {"message": message, "request": request}
+
+    @staticmethod
+    def _clarification_message(missing_fields) -> str:
+        # Specific, example-bearing questions so the customer knows what to reply.
+        questions = {
+            "service_rule_id": ("what needs fixing — for example: the aircon is leaking, "
+                                "a pipe is leaking, the toilet is blocked, or a socket needs repair"),
+            "estimated_duration_min": ("what needs fixing — for example: the aircon is leaking, "
+                                       "a pipe is leaking, the toilet is blocked, or a socket needs repair"),
+            "zone": "which area you are in — East, West, North, South or Central",
+            "window_start": ("a date and time window that works for you — "
+                             "for example: 15 March, 10:00 AM to 1:00 PM"),
+            "window_end": ("a date and time window that works for you — "
+                           "for example: 15 March, 10:00 AM to 1:00 PM"),
+        }
+        # De-duplicate (service_rule_id/estimated_duration_min and window_start/window_end
+        # collapse to one question each) while preserving order.
+        parts = list(dict.fromkeys(questions.get(field, field) for field in missing_fields))
+        if len(parts) == 1:
+            return f"Could you tell me {parts[0]}?"
+        joined = "; ".join(parts[:-1]) + "; and " + parts[-1]
+        return f"To find the right technician, could you tell me {joined}?"
