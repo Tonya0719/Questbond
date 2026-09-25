@@ -8,8 +8,10 @@ User=ubuntu
 Group=ubuntu
 WorkingDirectory=/home/ubuntu/Questbond
 ExecStart=/home/ubuntu/Questbond/.venv/bin/python -m streamlit run app.py --server.address=127.0.0.1 --server.port=8501 --server.headless=true --browser.gatherUsageStats=false
-Restart=on-failure
+Restart=always
 RestartSec=5
+OOMPolicy=stop
+OOMScoreAdjust=-500
 UMask=0077
 NoNewPrivileges=true
 PrivateTmp=true

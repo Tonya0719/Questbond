@@ -8,6 +8,22 @@ if [[ "$PWD" != /home/ubuntu/Questbond || "$(id -un)" != ubuntu ]]; then
 fi
 sudo apt-get update
 sudo apt-get install -y python3-venv python3-pip caddy
+
+# Prevent Ubuntu's firmware updater from exhausting the smallest Lightsail
+# plan. Firmware updates are not useful on a virtual server.
+if ! swapon --show=NAME --noheadings | grep -qx '/swapfile'; then
+  if [[ ! -f /swapfile ]]; then
+    sudo fallocate -l 1G /swapfile
+    sudo chmod 600 /swapfile
+    sudo mkswap /swapfile
+  fi
+  sudo swapon /swapfile
+fi
+grep -qF '/swapfile none swap sw 0 0' /etc/fstab || \
+  echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab >/dev/null
+sudo systemctl disable --now fwupd-refresh.timer fwupd.service 2>/dev/null || true
+sudo systemctl mask fwupd-refresh.timer fwupd.service >/dev/null 2>&1 || true
+
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
 mkdir -p /home/ubuntu/mendigo-data

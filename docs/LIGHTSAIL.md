@@ -6,6 +6,8 @@ The kit specifies Lightsail in Singapore (ap-southeast-1), Ubuntu 24.04, and bro
 
 Mendigo already has its own agents and UI. OpenClaw, Hermes and their local proxies are optional examples in the starter kit, not prerequisites for this app. The kit's Copilot section documents the /v1 OpenAI-compatible gateway route used by Mendigo. The older /api/chat examples use X-API-Key and describe differing tool behavior; do not mix those protocols. Our /v1 Bearer connection has passed a live tool-calling workflow.
 
+The setup script creates a 1 GB swap file and disables Ubuntu's firmware updater. This is required on the 512 MB plan: the updater can otherwise exhaust memory and make the instance unresponsive. A larger instance remains preferable for a public multi-user demo.
+
 ## 1. Create and connect
 
 In Lightsail, create a Linux Ubuntu 24.04 instance in Singapore named mendigo-demo, with public IPv4. When running, select **Connect using SSH**. Use the ubuntu account. Attach a static IP in Networking. Permit TCP 80 and 443 for the website; keep port 8501 private. Preserve the SSH rule needed for Lightsail browser SSH.

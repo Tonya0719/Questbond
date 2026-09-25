@@ -22,3 +22,12 @@ def test_deployment_rejects_demo_passwords_and_mock_backend():
     values.update(LLM_GATEWAY_API_KEY='test-key', TECHNICIAN_PASSWORD='DispatchTech2026!', COORDINATOR_PASSWORD='DispatchOps2026!', LLM_BACKEND='mock')
     errors = module.validate(values)
     assert len(errors) == 3
+
+
+def test_small_instance_memory_protection_and_service_recovery():
+    setup = (ROOT / 'deploy/lightsail/setup.sh').read_text()
+    service = (ROOT / 'deploy/lightsail/mendigo.service').read_text()
+    assert 'swapon /swapfile' in setup
+    assert 'mask fwupd-refresh.timer fwupd.service' in setup
+    assert 'Restart=always' in service
+    assert 'OOMScoreAdjust=-500' in service
