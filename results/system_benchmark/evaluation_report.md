@@ -1,9 +1,11 @@
 # Questbond System Benchmark Report
 
 - Benchmark version: 1.0.0
-- Date: 2026-09-23
+- Date: 2026-09-26
 - Mode: offline
 - Backend: mock (offline deterministic)
+
+> This report covers the offline deterministic run only. Live Agent results (latency, tokens, cost) live in separate artifacts and are not reflected here.
 
 ## Case counts
 
@@ -73,5 +75,5 @@ None — all cases passed.
 
 - Offline/mock results measure deterministic correctness and safety, not live Agent language quality.
 - Deterministic scheduling/recovery metrics are produced by Python, not the LLM.
-- Live latency/tokens/cost are collected only in `--mode live` (separate artifacts).
+- Live latency/tokens/cost are collected only in `--mode live`, and are written to separate artifacts (`agent_live_results.csv`, `agent_live` summary section). Offline agent results are written to `agent_offline_results.csv` and never overwrite live artifacts.
 - Multimodal visual accuracy is a separate evaluation track and is not included here.

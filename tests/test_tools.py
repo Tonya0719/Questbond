@@ -53,3 +53,40 @@ def test_agent_cannot_write_another_request(db):
         executor.execute("SES-TEST", AgentName.INTAKE.value, "save_structured_request",
                          {"request_id": "R002", "service_rule_id": "AC-LEAK"})
     assert db.execute("SELECT service_rule_id FROM structured_requests WHERE request_id='R002'").fetchone()[0] == "AC-ROUTINE"
+
+
+def test_ask_customer_clarification_records_and_overwrites(db):
+    from src.tools import intake_tools
+
+    first = intake_tools.ask_customer_clarification(db, "R001", "Which service do you need?")
+    assert first == {"request_id": "R001", "question": "Which service do you need?", "recorded": True}
+    stored = db.execute("SELECT question FROM clarification_prompts WHERE request_id='R001'").fetchone()[0]
+    assert stored == "Which service do you need?"
+    # INSERT OR REPLACE overwrites the same request's question.
+    intake_tools.ask_customer_clarification(db, "R001", "Which area are you in?")
+    rows = db.execute("SELECT question FROM clarification_prompts WHERE request_id='R001'").fetchall()
+    assert len(rows) == 1
+    assert rows[0][0] == "Which area are you in?"
+
+
+def test_ask_customer_clarification_rejects_unknown_request(db):
+    from src.tools import intake_tools
+
+    with pytest.raises(ValueError, match="Unknown request_id"):
+        intake_tools.ask_customer_clarification(db, "NOPE", "anything")
+
+
+def test_clarification_tool_is_intake_only():
+    registry = build_registry()
+    definition = registry["ask_customer_clarification"]
+    assert definition.allowed_agents == frozenset({AgentName.INTAKE.value})
+    assert AgentName.SCHEDULING.value not in definition.allowed_agents
+
+
+def test_clarification_tool_rejects_cross_request_call(db):
+    _session(db)
+    executor = ToolExecutor(db, build_registry())
+    with pytest.raises(ToolExecutionError, match="different request"):
+        executor.execute("SES-TEST", AgentName.INTAKE.value, "ask_customer_clarification",
+                         {"request_id": "R002", "question": "Which service do you need?"})
+    assert db.execute("SELECT COUNT(*) FROM clarification_prompts WHERE request_id='R002'").fetchone()[0] == 0

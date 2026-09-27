@@ -25,8 +25,17 @@ class CustomerIntakeAgent(BaseAgent):
                                     [{"role": "user", "content": [{"text": prompt}]}],
                                     self.system_prompt, self.tool_specs)
             status = self.call_tool(session_id, "get_request_status", request_id=request_id)
-            return {"message": text, "request": status}
+            clarification_question = self._clarification_question(request_id)
+            return {"message": text, "request": status,
+                    "clarification_question": clarification_question}
         return self._run_mock(session_id, request_id, customer_id, raw_message)
+
+    def _clarification_question(self, request_id: str):
+        """Return the clean customer-facing question the LLM produced via the
+        ask_customer_clarification tool, or None if it never asked one."""
+        row = self.executor.connection.execute(
+            "SELECT question FROM clarification_prompts WHERE request_id=?", (request_id,)).fetchone()
+        return row["question"] if row else None
 
     def _run_mock(self, session_id: str, request_id: str, customer_id: str, raw_message: str) -> dict:
         client = self.llm_client if isinstance(self.llm_client, MockAgentClient) else MockAgentClient()
@@ -52,7 +61,9 @@ class CustomerIntakeAgent(BaseAgent):
             message = "Request information is complete and ready for scheduling."
         else:
             message = self._clarification_message(request["missing_fields"])
-        return {"message": message, "request": request}
+        # The mock path uses the deterministic template question as the fallback,
+        # so it produces no tool-authored clarification question.
+        return {"message": message, "request": request, "clarification_question": None}
 
     @staticmethod
     def _clarification_message(missing_fields) -> str:

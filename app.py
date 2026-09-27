@@ -17,6 +17,7 @@ try:
     apply_theme()
     view = authorize_view()
     if view is None:
+        
         st.stop()
     {"Customer": customer_view.render, "Coordinator": coordinator_view.render,
      "Technician": technician_view.render}[view](connection)

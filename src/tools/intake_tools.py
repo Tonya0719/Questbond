@@ -75,6 +75,25 @@ def save_structured_request(connection, request_id: str, customer_id: Optional[s
     return structured.model_dump()
 
 
+def ask_customer_clarification(connection, request_id: str, question: str) -> dict:
+    """Record one clean, customer-facing clarification question for a request.
+
+    The Intake Agent calls this when it needs to ask the customer for more
+    information. The stored question is what the customer sees, so it must be a
+    single plain question (with a short example) and must never carry internal
+    reasoning, tool names, service_rule_id values, candidate matches or
+    technician details. The question is stored verbatim; HTML escaping remains
+    the responsibility of the UI layer.
+    """
+    raw = connection.execute("SELECT 1 FROM customer_requests WHERE request_id=?", (request_id,)).fetchone()
+    if raw is None:
+        raise ValueError(f"Unknown request_id: {request_id}")
+    connection.execute("INSERT OR REPLACE INTO clarification_prompts (request_id, question) VALUES (?,?)",
+                       (request_id, question))
+    connection.commit()
+    return {"request_id": request_id, "question": question, "recorded": True}
+
+
 def get_request_status(connection, request_id: str) -> dict:
     request = connection.execute("SELECT * FROM structured_requests WHERE request_id=?", (request_id,)).fetchone()
     if not request:

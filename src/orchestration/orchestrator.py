@@ -165,7 +165,13 @@ class AgentOrchestrator:
                 handoff = self._handoff(session_id, AgentName.INTAKE.value, "customer",
                     "CUSTOMER_CLARIFICATION_REQUIRED", request_id, payload={
                         "missing_fields": request.get("missing_fields", []), "message": intake["message"]})
-                self._record_message(session_id, "assistant", intake["message"])
+                # The customer sees the clean, tool-authored question the LLM produced,
+                # never its free-text reasoning. When no clean question exists (mock path
+                # or the LLM never called the tool), _record_message falls back to the
+                # sanitised customer_response() template.
+                clarification_public = intake.get("clarification_question")
+                self._record_message(session_id, "assistant", intake["message"],
+                                     public_content=clarification_public)
                 return AgentResponse(session_id=session_id, request_id=request_id,
                     workflow_status=WorkflowStatus.NEEDS_CLARIFICATION, message=intake["message"], handoffs=[handoff])
 
@@ -194,6 +200,9 @@ class AgentOrchestrator:
                 handoff_type, request_id, assignment_id=assignment.get("assignment_id"),
                 payload={"message": scheduling["message"], "assignment": assignment},
                 evidence=scheduling.get("decision_trace", scheduling.get("validation", {})))
+            # Scheduling free text (technician alias, times, reasoning) never reaches the
+            # customer directly. Clarifications from scheduling are rare; fall back to the
+            # sanitised customer_response() template rather than surfacing the raw wording.
             self._record_message(session_id, "assistant", scheduling["message"])
             return AgentResponse(session_id=session_id, request_id=request_id, workflow_status=final_status,
                 message=scheduling["message"], handoffs=[ready_handoff, final_handoff], result=scheduling)
@@ -204,12 +213,26 @@ class AgentOrchestrator:
             self._record_message(session_id, "assistant", f"Processing failed: {error}. Coordinator review is required.")
             raise
 
+    # Markers that only ever appear in internal agent text. If they leak into a
+    # public_content payload we refuse to show the raw text and fall back to the
+    # sanitised projection instead.
+    _INTERNAL_LEAK_MARKERS = ("Customer-provided booking details",)
+
     def _record_message(self, session_id: str, role: str, content: str, public_content=None):
         message_id = f"MSG-{uuid4().hex[:12]}"
         self.connection.execute("INSERT INTO agent_messages VALUES (?,?,?,?,?)",
             (message_id, session_id, role, content, datetime.now(timezone.utc).isoformat()))
-        public = (public_content if public_content is not None else content) if role == 'user' else customer_response(self.connection, session_id)
-        self.connection.execute('INSERT INTO customer_messages VALUES (?,?)', (message_id, customer_text(public)))
+        if role == 'user':
+            public = public_content if public_content is not None else content
+            public = customer_text(public)
+        elif public_content is not None and not any(marker in public_content for marker in self._INTERNAL_LEAK_MARKERS):
+            # Assistant clarification messages surface the LLM's own wording so the
+            # customer sees the same follow-up question the coordinator sees. Only
+            # timestamp formatting is applied; HTML escaping happens in the UI layer.
+            public = customer_text(public_content)
+        else:
+            public = customer_text(customer_response(self.connection, session_id))
+        self.connection.execute('INSERT INTO customer_messages VALUES (?,?)', (message_id, public))
         self.connection.commit()
 
     def _transition(self, session_id: str, target: WorkflowStatus, current_agent: str):

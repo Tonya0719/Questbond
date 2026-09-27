@@ -58,6 +58,9 @@ CREATE TABLE IF NOT EXISTS agent_messages (
 CREATE TABLE IF NOT EXISTS customer_messages (
  message_id TEXT PRIMARY KEY REFERENCES agent_messages(message_id),
  content TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS clarification_prompts (
+ request_id TEXT PRIMARY KEY REFERENCES customer_requests(request_id),
+ question TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS agent_handoffs (
  handoff_id TEXT PRIMARY KEY, session_id TEXT NOT NULL REFERENCES agent_sessions(session_id),
  source_agent TEXT NOT NULL, target_agent TEXT NOT NULL, handoff_type TEXT NOT NULL,

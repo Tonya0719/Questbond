@@ -35,6 +35,11 @@ class RequestIdInput(ToolInput):
     request_id: str
 
 
+class ClarificationInput(ToolInput):
+    request_id: str
+    question: str
+
+
 class AssignmentIdInput(ToolInput):
     assignment_id: str
 
@@ -69,6 +74,14 @@ def build_registry() -> Dict[str, ToolDefinition]:
                        intake_tools.save_structured_request, frozenset({intake}), False),
         ToolDefinition("get_request_status", "Get readiness and structured request fields.", RequestIdInput,
                        intake_tools.get_request_status, frozenset({intake, scheduling}), True),
+        ToolDefinition("ask_customer_clarification",
+                       "Record the single clean question shown to the customer when information is "
+                       "incomplete. Call this ONLY when you need to ask the customer for more detail. "
+                       "The question MUST be one plain, customer-facing sentence plus one short example "
+                       "(e.g. 'Which service do you need? For example: the aircon is leaking, or a pipe "
+                       "is leaking.'). It MUST NOT contain any internal reasoning, tool names, "
+                       "service_rule_id values, candidate/lookup matches, or technician details.",
+                       ClarificationInput, intake_tools.ask_customer_clarification, frozenset({intake}), False),
         ToolDefinition("recommend_assignment", "Run the complete deterministic assignment engine.", RequestIdInput,
                        scheduling_tools.recommend_assignment, frozenset({scheduling}), False),
         ToolDefinition("validate_assignment_recommendation", "Independently validate assignment invariants.", AssignmentIdInput,

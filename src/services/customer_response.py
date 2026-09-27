@@ -25,9 +25,27 @@ def customer_response(connection, session_id):
         return 'We couldn’t process your request. Please contact the coordinator for help.'
     if status == 'NEEDS_CLARIFICATION':
         row = connection.execute('SELECT missing_fields FROM structured_requests WHERE request_id=?', (session['request_id'],)).fetchone()
-        missing = json.loads(row[0]) if row else []
+        # Robust parse: a missing row, a NULL missing_fields cell, or malformed JSON
+        # all mean the structured data is not complete yet — never raise here.
+        missing = []
+        if row is not None and row[0] is not None:
+            try:
+                parsed = json.loads(row[0])
+                if isinstance(parsed, list):
+                    missing = parsed
+            except (json.JSONDecodeError, TypeError):
+                missing = []
+        # When we cannot pin down which fields are missing (empty list, or the
+        # placeholder 'structured_request'), the most likely and most useful thing
+        # to ask about is the service type, so default to that.
+        service_unknown = (
+            not missing
+            or 'structured_request' in missing
+            or any(field in missing for field in
+                   ('service_rule_id', 'category', 'subtype', 'estimated_duration_min'))
+        )
         questions = []
-        if any(field in missing for field in ('service_rule_id', 'category', 'subtype', 'structured_request')):
+        if service_unknown:
             questions.append('what needs fixing — for example: the aircon is leaking, '
                              'a pipe is leaking, the toilet is blocked, or a socket needs repair')
         if 'zone' in missing:
