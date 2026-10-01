@@ -1,5 +1,5 @@
 # Mendigo — Technician Scheduling Agent
-https://mendigo.54-251-220-102.sslip.io/-The website of the Mendigo
+https://mendigo.54-251-220-102.sslip.io/ - The website of the Mendigo
 
 For AWS hosting, follow [the Lightsail deployment guide](docs/LIGHTSAIL.md), adapted from the organizers' ShowMeYourAgent starter kit. It uses Singapore, Ubuntu, browser SSH, a persistent database and HTTPS. The setup does not require manually creating an EC2 key pair.
 
