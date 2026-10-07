@@ -1,10 +1,12 @@
 import base64
 import json
 from dataclasses import replace
+from types import SimpleNamespace
 import pytest
 
 from src.llm.local_client import LocalOpenAICompatibleClient
 from src.services import photo_service
+from src.services import request_service
 from src.services.photo_service import assess_and_store_photo, validate_photo
 from src.services.request_service import submit_request
 
@@ -40,6 +42,35 @@ def test_photo_only_request_uses_visually_supported_service(db):
     public = '\n'.join(row[0] for row in db.execute('SELECT content FROM customer_messages'))
     assert 'I uploaded a photo for the agent to assess.' in public
     assert 'Customer-provided booking details' not in public
+
+
+def test_unverified_scene_caption_does_not_become_repair_request(db, monkeypatch):
+    monkeypatch.setattr(request_service, 'assess_and_store_photo', lambda *args: {
+        'summary': 'A white ceramic toilet with yellowish-brown water in the bowl.',
+        'suggested_service_rule_id': None,
+        'urgency': 'NORMAL',
+        'safety_note': 'No immediate hazard was identified.',
+        'assessment_source': 'test-model',
+    })
+    captured = {}
+
+    class FakeOrchestrator:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def run_request(self, request_id, customer_id, message, **kwargs):
+            captured['message'] = message
+            return SimpleNamespace(session_id='test-session', request_id=request_id,
+                                   workflow_status=SimpleNamespace(value='NEEDS_CLARIFICATION'),
+                                   message='Please clarify the repair needed.')
+
+    monkeypatch.setattr(request_service, 'AgentOrchestrator', FakeOrchestrator)
+    submit_request(db, '', contact={
+        'name': 'Synthetic Resident', 'email': 'photo@example.com', 'apartment': 'Block A, unit #08-12'},
+        scheduling_context='East 2030-01-20T10:00 2030-01-20T13:00', photo=PHOTO)
+
+    assert 'needs clarification' in captured['message'].lower()
+    assert 'toilet' not in captured['message'].lower()
 
 
 def test_photo_validation_rejects_unsupported_or_oversized_files():

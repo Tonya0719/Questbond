@@ -82,15 +82,18 @@ def submit_request(connection, raw_message: str, customer_id_or_new: str = "NEW"
             'CA-CABINET': 'cabinet repair', 'MA-CRACK': 'wall crack cement patch',
             'MA-TILE': 'tile repair',
         }.get(assessment['suggested_service_rule_id'], '')
-        effective_description = effective_description or canonical or assessment['summary']
+        # Keep the scene caption separate from repair intent. A vision model can
+        # describe the wrong object; when it cannot support a service finding,
+        # never feed that caption into intake/scheduling as the customer's issue.
+        effective_description = (effective_description or canonical
+                                 or 'Photo uploaded; the maintenance issue needs clarification.')
         generated = f"Photo agent assessment: {assessment['summary']}"
         if canonical:
             generated += f" Identified request: {canonical}."
         connection.execute("UPDATE customer_requests SET raw_message=? WHERE request_id=?",
                            (raw_message.strip() or generated, request_id))
         connection.commit()
-        photo_context = (f"\nPhoto assessment: {assessment['summary']} "
-                         f"Suggested service rule: {assessment['suggested_service_rule_id'] or 'unclear'}. "
+        photo_context = (f"\nPhoto attachment. Visually supported service: {canonical or 'none; clarify the repair needed'}. "
                          f"Safety note: {assessment['safety_note']}")
     agent_message = ((f"Customer-provided booking details: {scheduling_context}\n" if scheduling_context else "")
                      + effective_description + photo_context)
