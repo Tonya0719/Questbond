@@ -8,6 +8,7 @@ from ..services.customer_response import customer_response, visit_time
 from ..services.availability_service import next_available_offer
 from ..services.booking_service import confirm_recommendation
 from ..services.visit_details import visit_details
+from ..services.photo_service import customer_photo_summary
 
 
 def _book_customer_approved_window(connection, session_id, message):
@@ -67,9 +68,12 @@ def render(connection):
             photo = connection.execute("SELECT * FROM photo_assessments WHERE request_id=?", (session['request_id'],)).fetchone()
             if photo:
                 with st.expander('Photo assessment', expanded=True):
-                    st.write(photo['summary'])
+                    st.write(customer_photo_summary(dict(photo)))
                     if photo['assessment_source'] != 'not-run':
-                        st.caption(f"Suggested service: {photo['suggested_service_rule_id'] or 'No maintenance issue identified'}. {photo['safety_note']}")
+                        if photo['suggested_service_rule_id']:
+                            st.caption(f"Suggested service: {photo['suggested_service_rule_id']}. {photo['safety_note']}")
+                        else:
+                            st.caption('No maintenance issue was identified from the photo.')
                     else:
                         st.caption('The written issue description was used; no visual-model call was made.')
                     if photo['assessment_source'] == 'mock-demo':

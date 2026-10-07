@@ -7,7 +7,7 @@ import pytest
 from src.llm.local_client import LocalOpenAICompatibleClient
 from src.services import photo_service
 from src.services import request_service
-from src.services.photo_service import assess_and_store_photo, validate_photo
+from src.services.photo_service import assess_and_store_photo, customer_photo_summary, validate_photo
 from src.services.request_service import submit_request
 
 
@@ -71,6 +71,16 @@ def test_unverified_scene_caption_does_not_become_repair_request(db, monkeypatch
 
     assert 'needs clarification' in captured['message'].lower()
     assert 'toilet' not in captured['message'].lower()
+
+
+def test_unverified_scene_caption_is_not_shown_to_customer():
+    text = customer_photo_summary({
+        'summary': 'A white ceramic toilet with yellowish-brown water in the bowl.',
+        'suggested_service_rule_id': None,
+        'assessment_source': 'test-model',
+    })
+    assert 'could not reliably identify' in text
+    assert 'toilet' not in text
 
 
 def test_photo_validation_rejects_unsupported_or_oversized_files():

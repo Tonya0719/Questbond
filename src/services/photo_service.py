@@ -132,6 +132,16 @@ active-flooding hazards need human review."""
             'assessment_source': settings.llm_model}
 
 
+def customer_photo_summary(assessment: dict) -> str:
+    """Only show model-written scene text when a service has visual support."""
+    if assessment.get('assessment_source') == 'not-run':
+        return assessment['summary']
+    if not assessment.get('suggested_service_rule_id'):
+        return ('The photo is attached, but visual analysis could not reliably identify a '
+                'maintenance issue. Please describe what needs fixing.')
+    return assessment['summary']
+
+
 def assess_and_store_photo(connection, request_id: str, description: str, photo: dict) -> dict:
     validate_photo(photo)
     if settings.llm_backend == 'gateway':
