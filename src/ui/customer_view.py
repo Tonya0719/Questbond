@@ -73,7 +73,7 @@ def render(connection):
                         if photo['suggested_service_rule_id']:
                             st.caption(f"Suggested service: {photo['suggested_service_rule_id']}. {photo['safety_note']}")
                         else:
-                            st.caption('No maintenance issue was identified from the photo.')
+                            st.caption('No service category was assigned from the photo.')
                     else:
                         st.caption('The written issue description was used; no visual-model call was made.')
                     if photo['assessment_source'] == 'mock-demo':
@@ -168,9 +168,8 @@ def render(connection):
         left, right = st.columns(2)
         start = left.time_input("Available from", value=time(10, 0), step=1800)
         end = right.time_input("Available until", value=time(13, 0), step=1800)
-        duration_choice = st.selectbox('Visit length', ['Use service estimate', 'Reserve 1 hour'])
         st.caption('We allow 30 minutes of travel between technician visits, separately from the visit length.')
-        st.caption("We fit the visit inside your availability; the whole window is not reserved. Work time is estimated from the service type. A one-hour visit may need a follow-up for longer repairs. All times are Singapore time.")
+        st.caption("We fit a one-hour appointment inside your availability; the whole window is not reserved. Longer repairs may need a follow-up. All times are Singapore time.")
         submit = st.form_submit_button("Plan my visit  →", type="primary", width='stretch')
     if submit:
         try:
@@ -184,7 +183,7 @@ def render(connection):
                 response = submit_request(connection, message, contact={"name": name, "email": email, "apartment": apartment},
                                           scheduling_context=context, idempotency_key=st.session_state["submission_key"],
                                           photo=photo_payload,
-                                          reserved_duration_min=60 if duration_choice == 'Reserve 1 hour' else None)
+                                          reserved_duration_min=60)
             st.session_state["agent_session_id"] = response.session_id
             st.rerun()
         except ValueError as error:

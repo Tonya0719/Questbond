@@ -128,13 +128,13 @@ def test_customer_form_and_tracker_show_one_hour_separately(db, monkeypatch):
     for field in app.text_input:
         field.set_value({'Name': 'Demo', 'Email': 'demo@example.com', 'Apartment / unit': 'Block A unit 01'}[field.label])
     app.text_area[0].set_value('Aircon not cooling')
-    next(field for field in app.selectbox if field.label == 'Visit length').set_value('Reserve 1 hour')
     next(button for button in app.button if button.label.startswith('Plan my visit')).click().run()
     assert not app.exception
     visible = '\n'.join(element.value for element in app.text)
     assert 'Your availability:' in visible
     assert 'Estimated work time: about 90 minutes' in visible
     assert 'Visit length: 60 minutes' in visible
+    assert not any(field.label == 'Visit length' for field in app.selectbox)
     assert 'Proposed appointment:' in visible
     assert any('follow-up' in element.value for element in app.warning)
     assert any('30 minutes of travel' in element.value for element in app.caption)

@@ -7,7 +7,7 @@ import json
 from ..orchestration import AgentOrchestrator
 from ..llm import MockAgentClient
 from ..schemas.agent import AgentResponse, WorkflowStatus
-from .photo_service import assess_and_store_photo, store_photo_metadata, validate_photo
+from .photo_service import assess_and_store_photo, validate_photo
 
 
 def submit_request(connection, raw_message: str, customer_id_or_new: str = "NEW", channel: str = "WEB",
@@ -66,11 +66,9 @@ def submit_request(connection, raw_message: str, customer_id_or_new: str = "NEW"
     photo_context = ''
     effective_description = raw_message.strip()
     if photo:
-        if effective_description:
-            store_photo_metadata(connection, request_id, photo)
-            assessment = None
-        else:
-            assessment = assess_and_store_photo(connection, request_id, raw_message, photo)
+        # Always inspect an attached photo, even when the customer also typed
+        # a description. Text remains authoritative for routing when supplied.
+        assessment = assess_and_store_photo(connection, request_id, raw_message, photo)
     if photo and assessment:
         canonical = {
             'AC-ROUTINE': 'routine aircon servicing', 'AC-DIAG': 'aircon not cooling',
@@ -93,8 +91,12 @@ def submit_request(connection, raw_message: str, customer_id_or_new: str = "NEW"
         connection.execute("UPDATE customer_requests SET raw_message=? WHERE request_id=?",
                            (raw_message.strip() or generated, request_id))
         connection.commit()
-        photo_context = (f"\nPhoto attachment. Visually supported service: {canonical or 'none; clarify the repair needed'}. "
-                         f"Safety note: {assessment['safety_note']}")
+        if raw_message.strip():
+            photo_context = (f"\nPhoto description: {assessment['summary']}. "
+                             "Use the customer's written issue for service routing.")
+        else:
+            photo_context = (f"\nPhoto attachment. Visually supported service: {canonical or 'none; clarify the repair needed'}. "
+                             f"Safety note: {assessment['safety_note']}")
     agent_message = ((f"Customer-provided booking details: {scheduling_context}\n" if scheduling_context else "")
                      + effective_description + photo_context)
     public_message = raw_message.strip() or 'I uploaded a photo for the agent to assess.'

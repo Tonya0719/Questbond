@@ -66,18 +66,17 @@ def test_text_only_regression_no_photo_assessment(db):
 
 
 # ----------------------------------------------------------------------------
-# 3. Text + photo — current policy regression: text drives, vision skipped
+# 3. Text + photo — analyze both, while text remains authoritative for routing
 # ----------------------------------------------------------------------------
 
-def test_text_and_photo_skips_vision_and_stores_metadata(db):
+def test_text_and_photo_runs_visual_assessment_and_routes_from_written_issue(db):
     response = submit_request(db, 'The aircon is leaking', contact={**CONTACT, 'email': 'p3@example.com'},
                               scheduling_context=CONTEXT, photo=PNG)
     assessment = db.execute('SELECT * FROM photo_assessments WHERE request_id=?',
                             (response.request_id,)).fetchone()
-    # Vision inference is skipped; only metadata/checksum is stored.
-    assert assessment['assessment_source'] == 'not-run'
-    assert assessment['suggested_service_rule_id'] is None
-    assert 'skipped' in assessment['summary'].lower()
+    assert assessment['assessment_source'] == 'mock-demo'
+    assert assessment['suggested_service_rule_id'] == 'AC-LEAK'
+    assert assessment['summary']
     assert assessment['byte_size'] == len(PNG['data'])
     assert len(assessment['sha256']) == 64
     # Scheduling follows the written request.

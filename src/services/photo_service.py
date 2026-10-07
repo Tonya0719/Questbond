@@ -133,12 +133,7 @@ active-flooding hazards need human review."""
 
 
 def customer_photo_summary(assessment: dict) -> str:
-    """Only show model-written scene text when a service has visual support."""
-    if assessment.get('assessment_source') == 'not-run':
-        return assessment['summary']
-    if not assessment.get('suggested_service_rule_id'):
-        return ('The photo is attached, but visual analysis could not reliably identify a '
-                'maintenance issue. Please describe what needs fixing.')
+    """Show the visual agent's scene description, even when no service is routed."""
     return assessment['summary']
 
 

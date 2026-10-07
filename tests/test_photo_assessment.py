@@ -15,14 +15,14 @@ PHOTO = {'filename': 'leaking-aircon.png', 'media_type': 'image/png', 'data': ba
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=')}
 
 
-def test_photo_assessment_stores_metadata_but_not_original_image(db):
+def test_text_and_photo_run_assessment_without_storing_original_image(db):
     response = submit_request(db, 'The aircon is leaking', contact={
         'name': 'Synthetic Resident', 'email': 'resident@example.com', 'apartment': 'Block A, unit #05-12'},
         scheduling_context='East 2030-01-20T10:00 2030-01-20T13:00', photo=PHOTO)
     row = db.execute('SELECT * FROM photo_assessments WHERE request_id=?', (response.request_id,)).fetchone()
-    assert row['suggested_service_rule_id'] is None
-    assert row['assessment_source'] == 'not-run'
-    assert 'skipped' in row['summary']
+    assert row['suggested_service_rule_id'] == 'AC-LEAK'
+    assert row['assessment_source'] == 'mock-demo'
+    assert row['summary']
     assert row['byte_size'] == len(PHOTO['data'])
     columns = {item['name'] for item in db.execute('PRAGMA table_info(photo_assessments)')}
     assert 'data' not in columns and 'image' not in columns and 'blob' not in columns
@@ -73,14 +73,13 @@ def test_unverified_scene_caption_does_not_become_repair_request(db, monkeypatch
     assert 'toilet' not in captured['message'].lower()
 
 
-def test_unverified_scene_caption_is_not_shown_to_customer():
+def test_scene_caption_is_shown_even_when_no_service_is_assigned():
     text = customer_photo_summary({
         'summary': 'A white ceramic toilet with yellowish-brown water in the bowl.',
         'suggested_service_rule_id': None,
         'assessment_source': 'test-model',
     })
-    assert 'could not reliably identify' in text
-    assert 'toilet' not in text
+    assert 'toilet' in text
 
 
 def test_photo_validation_rejects_unsupported_or_oversized_files():
