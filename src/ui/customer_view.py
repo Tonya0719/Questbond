@@ -8,7 +8,6 @@ from ..services.customer_response import customer_response, visit_time
 from ..services.availability_service import next_available_offer
 from ..services.booking_service import confirm_recommendation
 from ..services.visit_details import visit_details
-from ..services.photo_service import customer_photo_summary
 
 
 def _book_customer_approved_window(connection, session_id, message):
@@ -61,19 +60,6 @@ def render(connection):
                     label = 'Confirmed appointment' if details['confirmed'] else 'Proposed appointment'
                     st.text(label + ': ' + visit_time(details['scheduled_start'], details['scheduled_end']))
                     st.caption('The schedule allows 30 minutes of travel between visits, separately from your appointment. This is a fixed buffer, not a live traffic estimate.')
-            photo = connection.execute("SELECT * FROM photo_assessments WHERE request_id=?", (session['request_id'],)).fetchone()
-            if photo:
-                with st.expander('Photo assessment', expanded=True):
-                    st.write(customer_photo_summary(dict(photo)))
-                    if photo['assessment_source'] != 'not-run':
-                        if photo['suggested_service_rule_id']:
-                            st.caption(f"Suggested service: {photo['suggested_service_rule_id']}. {photo['safety_note']}")
-                        else:
-                            st.caption('No service category was assigned from the photo.')
-                    else:
-                        st.caption('The written issue description was used; no visual-model call was made.')
-                    if photo['assessment_source'] == 'mock-demo':
-                        st.info('Local preview assessment. The deployed gateway performs visual analysis.')
         if booking:
             st.success("Your visit is confirmed.")
             notice = connection.execute("""SELECT body FROM customer_notifications
