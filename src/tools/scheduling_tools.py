@@ -7,6 +7,7 @@ from ..scheduling.assignment_engine import assign_technician
 from ..scheduling.conflicts import has_schedule_conflict
 from ..scheduling.eligibility import has_required_certifications, has_required_skills
 from ..scheduling.workload import get_assigned_workload
+from ..scheduling.travel import has_travel_conflict, TRAVEL_BUFFER_MIN
 
 
 def recommend_assignment(connection, request_id: str) -> dict:
@@ -25,7 +26,11 @@ def validate_assignment_recommendation(connection, assignment_id: str) -> dict:
     rule = connection.execute("SELECT * FROM service_rules WHERE service_rule_id=?", (request["service_rule_id"],)).fetchone()
     start, end = datetime.fromisoformat(assignment["scheduled_start"]), datetime.fromisoformat(assignment["scheduled_end"])
     violations = []
-    if int((end - start).total_seconds() / 60) != rule["default_duration_min"]:
+    preference = connection.execute("SELECT reserved_duration_min FROM request_duration_preferences WHERE request_id=?",
+                                    (request["request_id"],)).fetchone()
+    expected_duration = preference[0] if preference else rule["default_duration_min"]
+    if ((end - start).total_seconds() != expected_duration * 60
+            or request["estimated_duration_min"] != expected_duration):
         violations.append("DURATION_MISMATCH")
     company = connection.execute("SELECT * FROM company_profile LIMIT 1").fetchone()
     if start.date() != end.date() or not (time.fromisoformat(company["operating_start"]) <= start.time()
@@ -45,6 +50,8 @@ def validate_assignment_recommendation(connection, assignment_id: str) -> dict:
         violations.append("OUTSIDE_SHIFT")
     if has_schedule_conflict(connection, technician["technician_id"], start, end):
         violations.append("SCHEDULE_CONFLICT")
+    elif has_travel_conflict(connection, technician["technician_id"], start, end):
+        violations.append("INSUFFICIENT_TRAVEL_TIME")
     workload = get_assigned_workload(connection, technician["technician_id"], start.date().isoformat())
     if workload + request["estimated_duration_min"] > technician["max_workload_min"]:
         violations.append("WORKLOAD_LIMIT")
@@ -64,6 +71,8 @@ def get_assignment_decision_trace(connection, assignment_id: str) -> dict:
         raise ValueError(f"Unknown assignment_id: {assignment_id}")
     reason = json.loads(assignment["recommendation_reason"])
     return {"assignment_id": assignment_id, "request_id": assignment["request_id"],
+            "travel_buffer_min": TRAVEL_BUFFER_MIN,
+            "travel_estimate_source": "fixed planning allowance, not live routing",
             "decision_status": assignment["decision_status"], "selected_candidate": {
                 "technician_id": assignment["technician_id"], "scheduled_start": assignment["scheduled_start"],
                 "scheduled_end": assignment["scheduled_end"], "workload_before": assignment["workload_before"],

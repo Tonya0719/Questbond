@@ -10,6 +10,7 @@ from .eligibility import eligibility_reasons
 from .ranking import rank_candidates
 from .slots import find_earliest_feasible_slot
 from .workload import get_assigned_workload, within_workload_capacity
+from .travel import TRAVEL_BUFFER_MIN
 
 
 def _persist(connection, result: AssignmentResult):
@@ -70,6 +71,8 @@ def assign_technician(request_id: str, connection=None) -> AssignmentResult:
         else:
             winner = rank_candidates(candidates)[0]
             reason = {"skill_match": True, "certification_match": True, "status": "AVAILABLE",
+                      "travel_buffer_min": TRAVEL_BUFFER_MIN,
+                      "travel_estimate_source": "fixed planning allowance, not live routing",
                       "schedule_conflict": False, "workload_before": winner["workload_before"],
                       "workload_after": winner["workload_after"],
                       "projected_workload_ratio": round(winner["projected_workload_ratio"], 6),

@@ -7,6 +7,7 @@ from ..services.request_service import continue_request, submit_request
 from ..services.customer_response import customer_response, visit_time
 from ..services.availability_service import next_available_offer
 from ..services.booking_service import confirm_recommendation
+from ..services.visit_details import visit_details
 
 
 def _book_customer_approved_window(connection, session_id, message):
@@ -52,7 +53,17 @@ def render(connection):
             with st.expander("Your request details", expanded=True):
                 st.text(f"{request['subtype'] or 'Service to be clarified'}\n{request['zone'] or 'Area to be clarified'}")
                 if request['window_start'] and request['window_end']:
-                    st.text(visit_time(request['window_start'], request['window_end']))
+                    st.text('Your availability: ' + visit_time(request['window_start'], request['window_end']))
+                details = visit_details(connection, session['request_id'])
+                if details['default_duration_min']:
+                    st.text(f"Estimated work time: about {details['default_duration_min']} minutes (based on service type).")
+                    st.text(f"Visit length: {details['estimated_duration_min']} minutes.")
+                    if details['estimated_duration_min'] < details['default_duration_min']:
+                        st.warning('This visit is shorter than the estimated work time. Completing the repair may require a follow-up.')
+                if details['scheduled_start'] and details['scheduled_end']:
+                    label = 'Confirmed appointment' if details['confirmed'] else 'Proposed appointment'
+                    st.text(label + ': ' + visit_time(details['scheduled_start'], details['scheduled_end']))
+                    st.caption('The schedule allows 30 minutes of travel between visits, separately from your appointment. This is a fixed buffer, not a live traffic estimate.')
             photo = connection.execute("SELECT * FROM photo_assessments WHERE request_id=?", (session['request_id'],)).fetchone()
             if photo:
                 with st.expander('Photo assessment', expanded=True):
@@ -153,7 +164,9 @@ def render(connection):
         left, right = st.columns(2)
         start = left.time_input("Available from", value=time(10, 0), step=1800)
         end = right.time_input("Available until", value=time(13, 0), step=1800)
-        st.caption("Give a time window long enough for the visit. Appointments are in Singapore time.")
+        duration_choice = st.selectbox('Visit length', ['Use service estimate', 'Reserve 1 hour'])
+        st.caption('We allow 30 minutes of travel between technician visits, separately from the visit length.')
+        st.caption("We fit the visit inside your availability; the whole window is not reserved. Work time is estimated from the service type. A one-hour visit may need a follow-up for longer repairs. All times are Singapore time.")
         submit = st.form_submit_button("Plan my visit  →", type="primary", width='stretch')
     if submit:
         try:
@@ -166,7 +179,8 @@ def render(connection):
                                  if photo else None)
                 response = submit_request(connection, message, contact={"name": name, "email": email, "apartment": apartment},
                                           scheduling_context=context, idempotency_key=st.session_state["submission_key"],
-                                          photo=photo_payload)
+                                          photo=photo_payload,
+                                          reserved_duration_min=60 if duration_choice == 'Reserve 1 hour' else None)
             st.session_state["agent_session_id"] = response.session_id
             st.rerun()
         except ValueError as error:

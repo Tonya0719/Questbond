@@ -17,6 +17,7 @@ from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 from ..scheduling.conflicts import intervals_overlap
+from ..scheduling.travel import has_travel_conflict
 from ..scheduling.eligibility import eligibility_reasons
 from ..scheduling.workload import get_assigned_workload, within_workload_capacity
 from ..validators import ACTIVE_ASSIGNMENT_STATUSES, ACTIVE_JOB_STATUSES
@@ -77,7 +78,7 @@ def _conflicts(connection, technician_id: str, start: datetime, end: datetime, i
             start, end, datetime.fromisoformat(row['scheduled_start']), datetime.fromisoformat(row['scheduled_end']))
            for row in rows):
         return True
-    return any(item[0] == technician_id and intervals_overlap(start, end, item[1], item[2]) for item in reserved)
+    return has_travel_conflict(connection, technician_id, start, end, ignored_jobs, reserved)
 
 
 def _bounds(connection, technician, job_date):

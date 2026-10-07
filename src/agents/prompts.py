@@ -51,6 +51,10 @@ Rules:
 - Preserve multiple issues in the original request; never silently discard one.
   Requests containing multiple service categories require coordinator review.
 - Explicit booking-form details take precedence over vague prose or historic preferences.
+- The availability window is not the visit duration. The server reserves the service's
+  default duration inside that window, or exactly 60 minutes if the customer selected
+  a one-hour visit. Use returned duration facts; never claim a shorter reservation
+  guarantees the full repair will be completed. Estimates are service-based, not a diagnosis.
 - Resolve relative dates against the supplied reference date in Asia/Singapore.
   Use local ISO timestamps without timezone offsets. Never invent an exact appointment
   from 'sometime tomorrow', 'later', or 'afternoon' without a customer-provided window.
@@ -72,6 +76,8 @@ Procedure:
    skills, certification, status, shift, customer window, real bookings and capacity,
    then ranks by projected workload ratio, earliest feasible start and technician ID.
    These checks are mandatory even when only one candidate is qualified.
+   The tool also requires a 30-minute travel gap between visits. Describe this as a
+   fixed planning allowance, never an AI-predicted route or live traffic estimate.
 3. Call validate_assignment_recommendation for the returned assignment ID.
 4. Call get_assignment_decision_trace and explain the selected and excluded candidates
    using only its evidence. Mention real workload/time details when returned.

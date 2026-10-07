@@ -12,7 +12,9 @@ from .photo_service import assess_and_store_photo, store_photo_metadata, validat
 
 def submit_request(connection, raw_message: str, customer_id_or_new: str = "NEW", channel: str = "WEB",
                    contact: dict | None = None, scheduling_context: str = "", idempotency_key: str | None = None,
-                   photo: dict | None = None):
+                   photo: dict | None = None, reserved_duration_min: int | None = None):
+    if reserved_duration_min is not None and (type(reserved_duration_min) is not int or reserved_duration_min != 60):
+        raise ValueError("Choose the service estimate or a one-hour visit.")
     if not raw_message.strip() and not photo:
         raise ValueError("Describe the maintenance issue.")
     if contact:
@@ -27,7 +29,9 @@ def submit_request(connection, raw_message: str, customer_id_or_new: str = "NEW"
     photo_fingerprint = hashlib.sha256(photo['data']).hexdigest() if photo else None
     payload_hash = hashlib.sha256(json.dumps({"message": raw_message.strip(), "customer": customer_id_or_new,
         "channel": channel, "contact": contact, "context": scheduling_context,
-        "photo": photo_fingerprint}, sort_keys=True).encode()).hexdigest()
+        "photo": photo_fingerprint,
+        **({"reserved_duration_min": reserved_duration_min} if reserved_duration_min is not None else {})},
+        sort_keys=True).encode()).hexdigest()
     key = idempotency_key or uuid4().hex
     connection.execute("BEGIN IMMEDIATE")
     try:
@@ -53,6 +57,8 @@ def submit_request(connection, raw_message: str, customer_id_or_new: str = "NEW"
             connection.execute("INSERT INTO request_contacts VALUES (?,?,?,?)",
                                (request_id, contact["name"].strip(), contact["email"].strip(), contact["apartment"].strip()))
         connection.execute("INSERT INTO request_submissions VALUES (?,?,?)", (key, request_id, payload_hash))
+        if reserved_duration_min is not None:
+            connection.execute("INSERT INTO request_duration_preferences VALUES (?,?)", (request_id, reserved_duration_min))
         connection.commit()
     except Exception:
         connection.rollback()

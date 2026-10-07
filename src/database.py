@@ -71,6 +71,9 @@ CREATE TABLE IF NOT EXISTS agent_tool_calls (
 CREATE TABLE IF NOT EXISTS request_contacts (
  request_id TEXT PRIMARY KEY REFERENCES customer_requests(request_id),
  name TEXT NOT NULL, email TEXT NOT NULL, apartment TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS request_duration_preferences (
+ request_id TEXT PRIMARY KEY REFERENCES customer_requests(request_id),
+ reserved_duration_min INTEGER NOT NULL CHECK(reserved_duration_min = 60));
 CREATE TABLE IF NOT EXISTS booking_confirmations (
  assignment_id TEXT PRIMARY KEY REFERENCES assignment_results(assignment_id),
  request_id TEXT NOT NULL UNIQUE REFERENCES customer_requests(request_id),

@@ -34,7 +34,7 @@ def lookup_service_rules(connection, query: str) -> dict:
         score = sum(1 for term in expanded if term in text)
         if score:
             matches.append({"service_rule_id": rule["service_rule_id"], "category": rule["category"],
-                            "subtype": rule["subtype"], "score": score})
+                            "subtype": rule["subtype"], "default_duration_min": rule["default_duration_min"], "score": score})
     matches.sort(key=lambda item: (-item["score"], item["service_rule_id"]))
     return {"matches": matches[:5]}
 
@@ -60,11 +60,14 @@ def save_structured_request(connection, request_id: str, customer_id: Optional[s
         rule = connection.execute("SELECT * FROM service_rules WHERE service_rule_id=?", (service_rule_id,)).fetchone()
         if rule is None:
             raise ValueError(f"Unknown service_rule_id: {service_rule_id}")
+    preference = connection.execute("SELECT reserved_duration_min FROM request_duration_preferences WHERE request_id=?",
+                                    (request_id,)).fetchone()
+    duration = (preference[0] if preference else rule["default_duration_min"]) if rule else None
     structured = StructuredRequest(request_id=request_id, customer_id=customer_id,
         service_rule_id=rule["service_rule_id"] if rule else None,
         category=rule["category"] if rule else None, subtype=rule["subtype"] if rule else None,
         zone=zone, urgency=urgency, window_start=window_start, window_end=window_end,
-        estimated_duration_min=rule["default_duration_min"] if rule else None)
+        estimated_duration_min=duration)
     if structured.window_start and structured.window_end and structured.window_start >= structured.window_end:
         raise ValueError("window_start must be before window_end")
     connection.execute("INSERT OR REPLACE INTO structured_requests VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",

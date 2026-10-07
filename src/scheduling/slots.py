@@ -1,6 +1,7 @@
 from datetime import datetime, time, timedelta
 
 from .conflicts import has_schedule_conflict
+from .travel import has_travel_conflict
 
 
 def _time(value: str) -> time:
@@ -28,7 +29,8 @@ def find_earliest_feasible_slot(connection, technician, window_start: str, windo
     latest_end = min(customer_end, shift_end, operating_end)
     while cursor + timedelta(minutes=duration_min) <= latest_end:
         end = cursor + timedelta(minutes=duration_min)
-        if not has_schedule_conflict(connection, technician["technician_id"], cursor, end):
+        if (not has_schedule_conflict(connection, technician["technician_id"], cursor, end)
+                and not has_travel_conflict(connection, technician["technician_id"], cursor, end)):
             return cursor, end
         cursor += timedelta(minutes=granularity_min)
     return None

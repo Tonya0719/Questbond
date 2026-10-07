@@ -327,6 +327,7 @@ def render_detail(connection, selected):
     confirmed = connection.execute('SELECT * FROM booking_confirmations WHERE request_id=?', (request_id,)).fetchone()
     trace = get_assignment_decision_trace(connection, assignment['assignment_id']) if assignment else None
     stage(3, 'Candidate evaluation')
+    st.caption('Availability includes a fixed 30-minute travel gap between visits. Visit duration covers work only; travel is separate and is not a live traffic estimate.')
     if trace:
         cells = []
         for row in candidate_dispositions(connection, trace):
