@@ -72,14 +72,26 @@ def submit_request(connection, raw_message: str, customer_id_or_new: str = "NEW"
         else:
             assessment = assess_and_store_photo(connection, request_id, raw_message, photo)
     if photo and assessment:
-        # Vision can be wrong (for example, mistaking a scenic lake for a home leak).
-        # Keep its suggestion visible for customer confirmation, but never feed it
-        # back as a customer fact that can authorize an appointment.
-        generated = 'Photo uploaded. The customer has not described the maintenance issue yet.'
+        canonical = {
+            'AC-ROUTINE': 'routine aircon servicing', 'AC-DIAG': 'aircon not cooling',
+            'AC-LEAK': 'aircon is leaking', 'PL-LEAK': 'pipe leak',
+            'PL-BLOCK': 'drain blockage', 'PL-FIXTURE': 'fixture replacement',
+            'EL-REPAIR': 'socket repair', 'EL-TRIP': 'power trip',
+            'EL-INSTALL': 'minor electrical installation', 'PA-WALL': 'wall painting',
+            'PA-TOUCH': 'painting touch-up', 'CA-DOOR': 'door repair',
+            'CA-CABINET': 'cabinet repair', 'MA-CRACK': 'wall crack cement patch',
+            'MA-TILE': 'tile repair',
+        }.get(assessment['suggested_service_rule_id'], '')
+        effective_description = effective_description or canonical or assessment['summary']
+        generated = f"Photo agent assessment: {assessment['summary']}"
+        if canonical:
+            generated += f" Identified request: {canonical}."
         connection.execute("UPDATE customer_requests SET raw_message=? WHERE request_id=?",
                            (raw_message.strip() or generated, request_id))
         connection.commit()
-        photo_context = ''
+        photo_context = (f"\nPhoto assessment: {assessment['summary']} "
+                         f"Suggested service rule: {assessment['suggested_service_rule_id'] or 'unclear'}. "
+                         f"Safety note: {assessment['safety_note']}")
     agent_message = ((f"Customer-provided booking details: {scheduling_context}\n" if scheduling_context else "")
                      + effective_description + photo_context)
     public_message = raw_message.strip() or 'I uploaded a photo for the agent to assess.'

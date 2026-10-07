@@ -1,7 +1,10 @@
 import base64
+import json
+from dataclasses import replace
 import pytest
 
 from src.llm.local_client import LocalOpenAICompatibleClient
+from src.services import photo_service
 from src.services.photo_service import assess_and_store_photo, validate_photo
 from src.services.request_service import submit_request
 
@@ -23,7 +26,7 @@ def test_photo_assessment_stores_metadata_but_not_original_image(db):
     assert 'data' not in columns and 'image' not in columns and 'blob' not in columns
 
 
-def test_photo_only_request_requires_customer_issue_confirmation(db):
+def test_photo_only_request_uses_visually_supported_service(db):
     response = submit_request(db, '', contact={
         'name': 'Synthetic Resident', 'email': 'photo@example.com', 'apartment': 'Block A, unit #08-12'},
         scheduling_context='East 2030-01-20T10:00 2030-01-20T13:00', photo=PHOTO)
@@ -31,13 +34,11 @@ def test_photo_only_request_requires_customer_issue_confirmation(db):
                             (response.request_id,)).fetchone()
     request = db.execute('SELECT * FROM structured_requests WHERE request_id=?',
                          (response.request_id,)).fetchone()
-    assert assessment['suggested_service_rule_id'] == 'AC-LEAK'  # suggestion is not customer evidence
-    assert request['service_rule_id'] is None
-    assert response.workflow_status.value == 'NEEDS_CLARIFICATION'
-    assert db.execute("SELECT COUNT(*) FROM schedules WHERE job_id LIKE 'WO-%'").fetchone()[0] == 0
+    assert assessment['suggested_service_rule_id'] == 'AC-LEAK'
+    assert request['service_rule_id'] == 'AC-LEAK'
+    assert response.workflow_status.value == 'RECOMMENDATION_CREATED'
     public = '\n'.join(row[0] for row in db.execute('SELECT content FROM customer_messages'))
     assert 'I uploaded a photo for the agent to assess.' in public
-    assert 'what needs fixing' in public.lower()
     assert 'Customer-provided booking details' not in public
 
 
@@ -63,3 +64,34 @@ def test_assessment_flags_hazard_language_for_human_review(db):
     result = assess_and_store_photo(db, 'PHOTO-REQ', 'There are sparks from the socket', PHOTO)
     assert result['urgency'] == 'URGENT'
     assert 'human review' in result['safety_note'].lower()
+
+
+@pytest.mark.parametrize('maintenance_related, evidence', [
+    (False, ''),
+    (True, 'A lake with blue water sits below the mountains in the green valley.'),
+])
+def test_landscape_description_is_preserved_and_not_misrouted(db, monkeypatch, maintenance_related, evidence):
+    scene = 'A blue lake lies below forested mountains, with a bright green meadow and clouds overhead.'
+    output = {
+        'scene_description': scene,
+        'maintenance_related': maintenance_related,
+        'visible_evidence': evidence,
+        # Exercise a vision model that incorrectly guesses a plumbing leak.
+        'suggested_service_rule_id': 'PL-LEAK',
+        'urgency': 'NORMAL',
+        'safety_note': '',
+    }
+
+    class FakeGateway:
+        def converse(self, *args):
+            return {'output': {'message': {'content': [{'text': json.dumps(output)}]}}}
+
+    monkeypatch.setattr(photo_service, 'GatewayClient', FakeGateway)
+    monkeypatch.setattr(photo_service, 'settings', replace(photo_service.settings, llm_backend='gateway'))
+    db.execute("INSERT INTO customer_requests VALUES ('SCENIC-REQ','NEW','2030-01-01','WEB','Photo uploaded','en')")
+    db.commit()
+    assessment = assess_and_store_photo(db, 'SCENIC-REQ', '', PHOTO)
+
+    assert assessment['summary'] == scene
+    assert assessment['suggested_service_rule_id'] is None
+    assert db.execute("SELECT summary FROM photo_assessments WHERE request_id='SCENIC-REQ'").fetchone()[0] == scene

@@ -49,7 +49,7 @@ def test_demo_clarification(db):
     assert second.workflow_status == WorkflowStatus.RECOMMENDATION_CREATED
 
 
-# 3. Photo-only intake: vision can suggest a service but requires customer confirmation
+# 3. Photo-only intake: a visually supported service creates a recommendation
 def test_demo_photo_only(db):
     response = submit_request(db, '', contact=CONTACT,
                               scheduling_context='East 2030-01-20T10:00 2030-01-20T13:00', photo=_png())
@@ -59,8 +59,8 @@ def test_demo_photo_only(db):
                          (response.request_id,)).fetchone()
     assert assessment['assessment_source'] == 'mock-demo'
     assert assessment['suggested_service_rule_id'] == 'AC-LEAK'
-    assert request['service_rule_id'] is None
-    assert response.workflow_status == WorkflowStatus.NEEDS_CLARIFICATION
+    assert request['service_rule_id'] == 'AC-LEAK'
+    assert response.workflow_status == WorkflowStatus.RECOMMENDATION_CREATED
 
 
 # 4. UNAVAILABLE: confirmed jobs -> disruption -> Before/After -> human review/approval

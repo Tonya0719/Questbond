@@ -22,25 +22,6 @@ ALLOWED_SERVICE_RULES = {
     'CA-CABINET', 'MA-CRACK', 'MA-TILE',
 }
 
-GROUNDED_VISUAL_SUMMARIES = {
-    'AC-ROUTINE': 'The photo appears to show an air-conditioning unit that needs servicing.',
-    'AC-DIAG': 'The photo appears to show an air-conditioning issue that needs diagnosis.',
-    'AC-LEAK': 'The photo appears to show water leakage associated with an air-conditioning unit.',
-    'PL-LEAK': 'The photo appears to show water escaping from a pipe or tap connection.',
-    'PL-BLOCK': 'The photo appears to show a blocked drain or toilet.',
-    'PL-FIXTURE': 'The photo appears to show a plumbing fixture that needs replacement.',
-    'EL-REPAIR': 'The photo appears to show a damaged electrical switch, socket or fitting.',
-    'EL-TRIP': 'The photo appears to show an electrical fault that needs diagnosis.',
-    'EL-INSTALL': 'The photo appears to show an electrical fitting that needs installation.',
-    'PA-WALL': 'The photo appears to show a wall surface that needs painting.',
-    'PA-TOUCH': 'The photo appears to show a small area of damaged or worn paint.',
-    'CA-DOOR': 'The photo appears to show a damaged door or frame.',
-    'CA-CABINET': 'The photo appears to show a damaged cabinet or fitting.',
-    'MA-CRACK': 'The photo appears to show a wall crack or damaged cement surface.',
-    'MA-TILE': 'The photo appears to show damaged tile or cement work.',
-}
-
-
 def validate_photo(photo: dict) -> None:
     if photo.get('media_type') not in ALLOWED_MEDIA_TYPES:
         raise ValueError('Upload a JPEG, PNG or WebP image.')
@@ -91,19 +72,25 @@ def _mock_assessment(description: str, photo: dict) -> dict:
 
 def _gateway_assessment(description: str, photo: dict) -> dict:
     client = GatewayClient()
-    prompt = """You are a visual maintenance triage agent. Inspect the actual image carefully before answering.
-Identify the visible object, material and failure symptom (for example escaping water, a pipe joint,
-wall crack, damaged door, exposed wiring, peeling paint or air-conditioner leakage). Do not invent objects
-that are not visible. Natural landscapes, lakes, rivers, scenery and unrelated photos are not maintenance
-issues; return suggested_service_rule_id null for them. Do not infer a household leak merely because a lake,
-river or other body of water appears in the image. Only identify a leak when water is visibly escaping from a
-plumbing fixture or appliance. A photo-only suggestion is unverified and the customer must describe or confirm
-the issue before a booking can be recommended. Assess this maintenance photo and the customer's description. Return only JSON with keys
-summary, suggested_service_rule_id, urgency, safety_note. suggested_service_rule_id must be one of
+    prompt = """You are a careful image describer and maintenance triage assistant. Inspect the pixels in the image.
+First describe only what is visibly present in scene_description, in plain language. Mention the main objects,
+setting, and visible condition. Do not turn a landscape, lake, river, pool, sky, reflection, or green area into
+a household repair. For example, a mountain lake is a lake in a landscape, not a pipe leak.
+
+Then decide maintenance_related. It is true only if the image visibly shows a household fixture or appliance
+and a specific failure. Name that object and failure in visible_evidence. Water by itself is not evidence of a
+leak: identify the pipe, tap, sink, toilet, air-conditioning unit, or other fixture it is escaping from. If the
+image is scenery, unrelated, ambiguous, or lacks visible repair evidence, set maintenance_related false,
+visible_evidence to an empty string, and suggested_service_rule_id to null. The written customer description
+may help interpret the image, but must never change what the pixels visibly show.
+
+Return only JSON with keys scene_description, maintenance_related, visible_evidence,
+suggested_service_rule_id, urgency, safety_note. suggested_service_rule_id must be one of
 AC-ROUTINE, AC-DIAG, AC-LEAK, PL-LEAK, PL-BLOCK, PL-FIXTURE, EL-REPAIR, EL-TRIP, EL-INSTALL,
-PA-WALL, PA-TOUCH, CA-DOOR, CA-CABINET, MA-CRACK, MA-TILE or null.
-urgency must be NORMAL or URGENT. Be concise, avoid definitive diagnosis, and route possible electrical,
-gas or active-flooding hazards to human review."""
+PA-WALL, PA-TOUCH, CA-DOOR, CA-CABINET, MA-CRACK, MA-TILE or null. Never return a service unless
+maintenance_related is true and visible_evidence names the relevant visible fixture and failure.
+urgency must be NORMAL or URGENT. Do not diagnose beyond visible evidence. Possible electrical, gas or
+active-flooding hazards need human review."""
     response = client.converse([{'role': 'user', 'content': [
         {'text': (f"Customer description: {description}" if description.strip()
                   else "No written issue was supplied. Describe and classify the visible maintenance problem from the image.")},
@@ -115,11 +102,30 @@ gas or active-flooding hazards to human review."""
         raise ValueError('The visual model did not return a structured assessment.')
     result = json.loads(match.group(0))
     service = result.get('suggested_service_rule_id')
-    if service not in ALLOWED_SERVICE_RULES:
+    evidence = str(result.get('visible_evidence') or '').strip().lower()
+    required_visual_evidence = {
+        'AC-ROUTINE': r'air\s*condition|aircon|hvac',
+        'AC-DIAG': r'air\s*condition|aircon|hvac',
+        'AC-LEAK': r'(?:air\s*condition|aircon|hvac).*(?:leak|water|drip)|(?:leak|water|drip).*(?:air\s*condition|aircon|hvac)',
+        'PL-LEAK': r'(?:pipe|tap|faucet|sink|toilet|valve|plumbing).*(?:leak|water|drip|wet)|(?:leak|water|drip|wet).*(?:pipe|tap|faucet|sink|toilet|valve|plumbing)',
+        'PL-BLOCK': r'(?:drain|toilet|sink).*(?:block|clog|slow)|(?:block|clog|slow).*(?:drain|toilet|sink)',
+        'PL-FIXTURE': r'(?:toilet|sink|tap|faucet|shower|basin|plumbing).*(?:broken|damaged|replace|install)',
+        'EL-REPAIR': r'(?:socket|outlet|switch|electrical).*(?:broken|damaged|burnt|exposed)',
+        'EL-TRIP': r'(?:circuit breaker|breaker|electrical panel).*(?:trip|fault|off)',
+        'EL-INSTALL': r'(?:socket|outlet|switch|light fitting|electrical fitting).*(?:install|replace)',
+        'PA-WALL': r'(?:wall|paint).*(?:peel|paint|unfinished)|(?:peel|paint|unfinished).*(?:wall|paint)',
+        'PA-TOUCH': r'(?:paint|wall).*(?:flak|peel|worn|chip)|(?:flak|peel|worn|chip).*(?:paint|wall)',
+        'CA-DOOR': r'door.*(?:broken|damaged|crack|loose)|(?:broken|damaged|crack|loose).*door',
+        'CA-CABINET': r'cabinet.*(?:broken|damaged|loose)|(?:broken|damaged|loose).*cabinet',
+        'MA-CRACK': r'(?:wall|cement|masonry).*(?:crack|damage)|(?:crack|damage).*(?:wall|cement|masonry)',
+        'MA-TILE': r'tile.*(?:crack|broken|damage)|(?:crack|broken|damage).*tile',
+    }
+    if (service not in ALLOWED_SERVICE_RULES or result.get('maintenance_related') is not True
+            or service not in required_visual_evidence
+            or not re.search(required_visual_evidence[service], evidence, re.I)):
         service = None
     urgency = result.get('urgency') if result.get('urgency') in {'NORMAL', 'URGENT'} else 'NORMAL'
-    summary = GROUNDED_VISUAL_SUMMARIES.get(
-        service, str(result.get('summary') or 'Photo received for coordinator review.')[:500])
+    summary = str(result.get('scene_description') or 'The image is unclear; no maintenance issue can be identified.')[:500]
     return {'summary': summary,
             'suggested_service_rule_id': service, 'urgency': urgency,
             'safety_note': str(result.get('safety_note') or 'Human review is recommended.')[:500],
