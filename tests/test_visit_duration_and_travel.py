@@ -114,7 +114,7 @@ def test_recovery_preserves_travel_gaps_and_display_uses_new_time(db):
     assert visit_details(db, first.request_id)['scheduled_start'] == '2030-01-15T13:00'
 
 
-def test_customer_form_and_tracker_show_one_hour_separately(db, monkeypatch):
+def test_customer_form_and_tracker_explain_requested_window_without_work_duration(db, monkeypatch):
     from dataclasses import replace
     from pathlib import Path
     from streamlit.testing.v1 import AppTest
@@ -131,10 +131,11 @@ def test_customer_form_and_tracker_show_one_hour_separately(db, monkeypatch):
     next(button for button in app.button if button.label.startswith('Plan my visit')).click().run()
     assert not app.exception
     visible = '\n'.join(element.value for element in app.text)
-    assert 'Your availability:' in visible
-    assert 'Estimated work time: about 90 minutes' in visible
-    assert 'Visit length: 60 minutes' in visible
+    assert 'Your requested time window:' in visible
+    assert any('We’ll arrange for a technician to arrive during this time.' in element.value for element in app.caption)
+    assert 'Estimated work time:' not in visible
+    assert 'Visit length:' not in visible
     assert not any(field.label == 'Visit length' for field in app.selectbox)
     assert 'Proposed appointment:' in visible
-    assert any('follow-up' in element.value for element in app.warning)
+    assert not any('follow-up' in element.value for element in app.warning)
     assert any('30 minutes of travel' in element.value for element in app.caption)

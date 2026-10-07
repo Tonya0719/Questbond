@@ -54,13 +54,9 @@ def render(connection):
             with st.expander("Your request details", expanded=True):
                 st.text(f"{request['subtype'] or 'Service to be clarified'}\n{request['zone'] or 'Area to be clarified'}")
                 if request['window_start'] and request['window_end']:
-                    st.text('Your availability: ' + visit_time(request['window_start'], request['window_end']))
+                    st.text('Your requested time window: ' + visit_time(request['window_start'], request['window_end']))
+                    st.caption('We’ll arrange for a technician to arrive during this time.')
                 details = visit_details(connection, session['request_id'])
-                if details['default_duration_min']:
-                    st.text(f"Estimated work time: about {details['default_duration_min']} minutes (based on service type).")
-                    st.text(f"Visit length: {details['estimated_duration_min']} minutes.")
-                    if details['estimated_duration_min'] < details['default_duration_min']:
-                        st.warning('This visit is shorter than the estimated work time. Completing the repair may require a follow-up.')
                 if details['scheduled_start'] and details['scheduled_end']:
                     label = 'Confirmed appointment' if details['confirmed'] else 'Proposed appointment'
                     st.text(label + ': ' + visit_time(details['scheduled_start'], details['scheduled_end']))
