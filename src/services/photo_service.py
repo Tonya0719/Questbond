@@ -94,7 +94,11 @@ def _gateway_assessment(description: str, photo: dict) -> dict:
     prompt = """You are a visual maintenance triage agent. Inspect the actual image carefully before answering.
 Identify the visible object, material and failure symptom (for example escaping water, a pipe joint,
 wall crack, damaged door, exposed wiring, peeling paint or air-conditioner leakage). Do not invent objects
-that are not visible. Assess this maintenance photo and the customer's description. Return only JSON with keys
+that are not visible. Natural landscapes, lakes, rivers, scenery and unrelated photos are not maintenance
+issues; return suggested_service_rule_id null for them. Do not infer a household leak merely because a lake,
+river or other body of water appears in the image. Only identify a leak when water is visibly escaping from a
+plumbing fixture or appliance. A photo-only suggestion is unverified and the customer must describe or confirm
+the issue before a booking can be recommended. Assess this maintenance photo and the customer's description. Return only JSON with keys
 summary, suggested_service_rule_id, urgency, safety_note. suggested_service_rule_id must be one of
 AC-ROUTINE, AC-DIAG, AC-LEAK, PL-LEAK, PL-BLOCK, PL-FIXTURE, EL-REPAIR, EL-TRIP, EL-INSTALL,
 PA-WALL, PA-TOUCH, CA-DOOR, CA-CABINET, MA-CRACK, MA-TILE or null.

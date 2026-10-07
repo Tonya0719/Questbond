@@ -69,7 +69,7 @@ def render(connection):
                 with st.expander('Photo assessment', expanded=True):
                     st.write(photo['summary'])
                     if photo['assessment_source'] != 'not-run':
-                        st.caption(f"Suggested service: {photo['suggested_service_rule_id'] or 'Coordinator review'} / {photo['safety_note']}")
+                        st.caption(f"AI suggestion only — confirm or correct it before scheduling. {photo['safety_note']}")
                     else:
                         st.caption('The written issue description was used; no visual-model call was made.')
                     if photo['assessment_source'] == 'mock-demo':
@@ -151,9 +151,9 @@ def render(connection):
         location_left, location_right = st.columns([2, 1])
         apartment = location_left.text_input("Apartment / unit", placeholder="Block A, unit 05-12")
         zone = location_right.selectbox("Area", ["East", "West", "North", "South", "Central"])
-        st.markdown('''<div class="form-section"><span class="material-symbols-rounded">handyman</span>What needs attention?</div><div class="form-helper">Add a short description, or leave it blank and let the visual agent assess a clear photo.</div>''', unsafe_allow_html=True)
+        st.markdown('''<div class="form-section"><span class="material-symbols-rounded">handyman</span>What needs attention?</div><div class="form-helper">Describe the issue. A photo can help the agent suggest what it might be; you’ll confirm the issue before scheduling.</div>''', unsafe_allow_html=True)
         message = st.text_area("What needs fixing? (optional with a photo)", max_chars=500,
-                               placeholder="Describe it here, or upload a clear photo and let the visual agent identify the issue.")
+                               placeholder="For example: water is leaking from the kitchen pipe.")
         photo = st.file_uploader('Add a photo (optional)', type=['jpg', 'jpeg', 'png', 'webp'],
                                  max_upload_size=5,
                                  help='The visual agent describes the likely issue and routes it to the right trade. Mendigo stores the assessment and checksum, not the original image.')

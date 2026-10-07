@@ -23,7 +23,7 @@ def test_photo_assessment_stores_metadata_but_not_original_image(db):
     assert 'data' not in columns and 'image' not in columns and 'blob' not in columns
 
 
-def test_photo_only_request_is_described_and_scheduled(db):
+def test_photo_only_request_requires_customer_issue_confirmation(db):
     response = submit_request(db, '', contact={
         'name': 'Synthetic Resident', 'email': 'photo@example.com', 'apartment': 'Block A, unit #08-12'},
         scheduling_context='East 2030-01-20T10:00 2030-01-20T13:00', photo=PHOTO)
@@ -31,11 +31,13 @@ def test_photo_only_request_is_described_and_scheduled(db):
                             (response.request_id,)).fetchone()
     request = db.execute('SELECT * FROM structured_requests WHERE request_id=?',
                          (response.request_id,)).fetchone()
-    assert assessment['suggested_service_rule_id'] == 'AC-LEAK'
-    assert request['service_rule_id'] == 'AC-LEAK'
-    assert response.workflow_status.value == 'RECOMMENDATION_CREATED'
+    assert assessment['suggested_service_rule_id'] == 'AC-LEAK'  # suggestion is not customer evidence
+    assert request['service_rule_id'] is None
+    assert response.workflow_status.value == 'NEEDS_CLARIFICATION'
+    assert db.execute("SELECT COUNT(*) FROM schedules WHERE job_id LIKE 'WO-%'").fetchone()[0] == 0
     public = '\n'.join(row[0] for row in db.execute('SELECT content FROM customer_messages'))
     assert 'I uploaded a photo for the agent to assess.' in public
+    assert 'what needs fixing' in public.lower()
     assert 'Customer-provided booking details' not in public
 
 

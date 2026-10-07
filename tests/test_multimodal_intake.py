@@ -34,10 +34,10 @@ CONTEXT = 'East 2030-01-20T10:00 2030-01-20T13:00'
 
 
 # ----------------------------------------------------------------------------
-# 1. Photo only — visual assessment runs and drives scheduling
+# 1. Photo only — visual assessment is only a suggestion; customer confirms issue
 # ----------------------------------------------------------------------------
 
-def test_photo_only_runs_visual_assessment_and_schedules(db):
+def test_photo_only_requires_customer_confirmation_before_scheduling(db):
     response = submit_request(db, '', contact={**CONTACT, 'email': 'p1@example.com'},
                               scheduling_context=CONTEXT, photo=PNG)
     assessment = db.execute('SELECT * FROM photo_assessments WHERE request_id=?',
@@ -46,8 +46,9 @@ def test_photo_only_runs_visual_assessment_and_schedules(db):
                          (response.request_id,)).fetchone()
     assert assessment['assessment_source'] == 'mock-demo'  # A visual path ran (mock, not accuracy).
     assert assessment['suggested_service_rule_id'] == 'AC-LEAK'
-    assert request['service_rule_id'] == 'AC-LEAK'
-    assert response.workflow_status.value == 'RECOMMENDATION_CREATED'
+    assert request['service_rule_id'] is None
+    assert response.workflow_status.value == 'NEEDS_CLARIFICATION'
+    assert db.execute("SELECT COUNT(*) FROM schedules WHERE job_id LIKE 'WO-%'").fetchone()[0] == 0
 
 
 # ----------------------------------------------------------------------------
